@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .btn-custom {
+      background-color: #1677ff;
+      color: white;
+      border: none;
+      padding: 16px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn-custom:hover {
+      background-color: #0958d9;
+    }
+    .btn-custom:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+
+  <button class="btn-custom" onclick="creerContact()">+ Créer un nouveau contact</button>
+
+  <script>
+    grist.ready({ requiredAccess: 'full' });
+
+    function creerContact() {
+      grist.docApi.applyUserActions([
+        ['AddRecord', 'CONTACTS', null, {}]
+      ]).then(() => {
+        console.log('Record added');
+      }).catch(err => {
+        console.error('Error adding record:', err);
+      });
+    }
+  </script>
+</body>
+</html>

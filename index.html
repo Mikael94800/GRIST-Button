@@ -17,7 +17,7 @@
       color: white;
       border: none;
       padding: 24px 36px;       /* Augmente la hauteur et largeur interne du bouton */
-      font-size: 24px;          /* Agrandit le texte (au lieu de 18px) */
+      font-size: 24px;          /* Agrandit le texte */
       font-weight: bold;
       border-radius: 12px;
       cursor: pointer;
@@ -40,14 +40,23 @@
   <script>
     grist.ready({ requiredAccess: 'full' });
 
-    function creerContact() {
-      grist.docApi.applyUserActions([
-        ['AddRecord', 'CONTACTS', null, {}]
-      ]).then(() => {
-        console.log('Record added');
-      }).catch(err => {
-        console.error('Error adding record:', err);
-      });
+    async function creerContact() {
+      try {
+        // 1. Création du contact dans la table CONTACTS
+        const result = await grist.docApi.applyUserActions([
+          ['AddRecord', 'CONTACTS', null, {}]
+        ]);
+
+        // 2. Récupération de l'ID de la ligne créée
+        const newRowId = Array.isArray(result) ? result[0] : result;
+
+        // 3. Déplacement du curseur/sélection vers la nouvelle ligne
+        if (newRowId) {
+          await grist.setCursorPos({ rowId: newRowId });
+        }
+      } catch (err) {
+        console.error('Erreur lors de la création du contact :', err);
+      }
     }
   </script>
 </body>

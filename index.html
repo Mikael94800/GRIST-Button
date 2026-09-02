@@ -16,8 +16,8 @@
       background-color: #1677ff;
       color: white;
       border: none;
-      padding: 24px 36px;       /* Augmente la hauteur et largeur interne du bouton */
-      font-size: 24px;          /* Agrandit le texte */
+      padding: 24px 36px;
+      font-size: 24px;
       font-weight: bold;
       border-radius: 12px;
       cursor: pointer;
@@ -42,16 +42,18 @@
 
     async function creerContact() {
       try {
-        // 1. Création du contact dans la table CONTACTS
+        // 1. Création du contact dans la table
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, {}]
         ]);
 
-        // 2. Récupération de l'ID de la ligne créée
+        // 2. Extraction de l'ID du nouveau contact
         const newRowId = Array.isArray(result) ? result[0] : result;
 
-        // 3. Déplacement du curseur/sélection vers la nouvelle ligne
         if (newRowId) {
+          // 3. Notification à Grist pour alimenter la sélection (SÉLECTIONNER PAR)
+          await grist.setSelectedRows([newRowId]);
+          // 4. Déplacement du curseur global sur la ligne
           await grist.setCursorPos({ rowId: newRowId });
         }
       } catch (err) {

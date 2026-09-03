@@ -7,9 +7,13 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { margin: 0; padding: 16px; background-color: transparent; }
-    #action-container { display: flex; justify-content: center; align-items: center; }
-    .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); }
+    #action-container { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
+    .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); transition: background-color 0.2s; }
     .btn-create:hover { background-color: #0958d9; }
+    
+    /* Notification de succès */
+    .alert-success { display: none; background-color: #f6ffed; border: 1px solid #b7eb8f; color: #274fee; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; width: 100%; box-shadow: 0 2px 8px rgba(82, 196, 26, 0.15); }
+    
     #form-container { display: none; background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
     .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1677ff; }
     .form-title { font-size: 18px; font-weight: 700; color: #1f2937; }
@@ -20,13 +24,14 @@
     label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
     input, select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; }
     input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
-    .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; }
+    .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-finish:hover { background-color: #389e0d; }
   </style>
 </head>
 <body>
 
   <div id="action-container">
+    <div id="success-banner" class="alert-success">✓ Le contact a bien été enregistré dans le tableur !</div>
     <button class="btn-create" onclick="demarrerNouveauContact()">+ Créer un nouveau contact</button>
   </div>
 
@@ -215,10 +220,12 @@
     }
 
     async function demarrerNouveauContact() {
+      // Masquer la bannière de succès au cas où elle était affichée
+      document.getElementById('success-banner').style.display = 'none';
+
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        // Création sans valeur pour obtenir la réponse brute de l'action
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
         ]);
@@ -232,7 +239,7 @@
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
         } else {
-          alert("Erreur: L'ID généré n'a pas pu être extrait. Réponse reçue : " + JSON.stringify(result));
+          alert("Erreur: L'ID généré n'a pas pu être extrait.");
         }
       } catch (err) {
         console.error('Erreur lors de la création :', err);
@@ -284,12 +291,23 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
+        // Reinitialisation des champs
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         currentRecordId = null;
 
+        // Masquer le formulaire et réafficher le bouton d'accueil
         document.getElementById('form-container').style.display = 'none';
         document.getElementById('action-container').style.display = 'flex';
+
+        // Afficher la bannière de confirmation
+        const banner = document.getElementById('success-banner');
+        banner.style.display = 'block';
+
+        // Masquer la bannière automatiquement après 5 secondes
+        setTimeout(() => {
+          banner.style.display = 'none';
+        }, 5000);
 
       } catch (err) {
         console.error('Erreur globale d\'enregistrement :', err);

@@ -42,17 +42,19 @@
 
     async function creerContact() {
       try {
-        // 1. Création de la ligne dans la table CONTACTS
+        // 1. Désactiver les anciens marquages dans la table CONTACTS (si besoin)
+        // 2. Ajouter le nouveau contact avec la date du jour pour l'isoler
+        const now = new Date().toISOString();
         const result = await grist.docApi.applyUserActions([
-          ['AddRecord', 'CONTACTS', null, {}]
+          ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': now }]
         ]);
 
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // 2. Sélection de la ligne générée
-          await grist.setSelectedRows([newRowId]);
+          // Force le signal d'action utilisateur natif
           await grist.setCursorPos({ rowId: newRowId });
+          await grist.docApi.getAccessToken({ readOnly: false });
         }
       } catch (err) {
         console.error('Erreur lors de la création du contact :', err);

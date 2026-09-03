@@ -204,35 +204,42 @@
 
     grist.ready({ requiredAccess: 'full' });
 
+    function parseGristId(response) {
+      if (!response) return null;
+      if (typeof response === 'number') return response;
+      if (Array.isArray(response)) return parseGristId(response[0]);
+      if (typeof response === 'object') {
+        return response.id || response.rowId || response.retValues?.[0] || Object.values(response)[0];
+      }
+      return null;
+    }
+
     async function demarrerNouveauContact() {
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Ajouter la nouvelle ligne
-        await grist.docApi.applyUserActions([
+        // Création sans valeur pour obtenir la réponse brute de l'action
+        const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
         ]);
 
-        // 2. Récupérer immédiatement la ligne la plus récente pour cibler son ID exact
-        const records = await grist.docApi.fetchTable('CONTACTS');
-        if (records && records.id && records.id.length > 0) {
-          currentRecordId = records.id[records.id.length - 1]; // Dernier ID réel
-          
-          document.getElementById('display-id').innerText = `Ligne Grist N° ${currentRecordId}`;
+        currentRecordId = parseGristId(result);
+
+        if (currentRecordId) {
+          document.getElementById('display-id').innerText = `ID Ligne: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
 
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
         } else {
-          alert("Impossible de déterminer le dernier identifiant inséré.");
+          alert("Erreur: L'ID généré n'a pas pu être extrait. Réponse reçue : " + JSON.stringify(result));
         }
       } catch (err) {
         console.error('Erreur lors de la création :', err);
-        alert("Erreur lors de la création de la ligne : " + err.message);
+        alert("Erreur réseau/Grist : " + err.message);
       }
     }
 
-    // Autocomplétion de la Ville et du Pays via API Geo
     async function traiterCodePostal(cp) {
       if (cp.trim().length === 5 && !isNaN(cp)) {
         try {
@@ -249,16 +256,14 @@
       }
     }
 
-    // Envoi global vers la bonne ligne
     async function validerEtSauvegarderTout() {
       if (!currentRecordId) {
-        alert("Aucun ID de ligne actif.");
+        alert("Erreur : Aucun ID de fiche n'est actif.");
         return;
       }
 
       const fieldsToSave = {};
 
-      // 1. Collecte des champs texte / date / textarea
       const inputs = document.querySelectorAll('#form-container input, #form-container textarea');
       inputs.forEach(input => {
         if (input.id && input.value !== '') {
@@ -266,7 +271,6 @@
         }
       });
 
-      // 2. Collecte des listes déroulantes
       const selects = document.querySelectorAll('#form-container select');
       selects.forEach(select => {
         if (select.id && select.value !== '') {
@@ -280,7 +284,6 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        // Nettoyage et réinitialisation
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         currentRecordId = null;

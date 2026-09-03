@@ -71,7 +71,7 @@
       <!-- STATUT JURIDIQUE -->
       <div class="field-group">
         <label>Statut Juridique</label>
-        <select id="STATUT_JURIDIQUE" data-type="choiceList">
+        <select id="STATUT_JURIDIQUE" data-type="auto">
           <option value="">-- Sélectionner --</option>
           <option value="Collectivités territoriales">Collectivités territoriales</option>
           <option value="Association">Association</option>
@@ -89,7 +89,7 @@
       <!-- TYPE DE STRUCTURE / CONTACT -->
       <div class="field-group">
         <label>Type de Structure / Contact</label>
-        <select id="TYPE_DE_STRUCTURE_CONTACT" data-type="choiceList">
+        <select id="TYPE_DE_STRUCTURE_CONTACT" data-type="auto">
           <option value="">-- Sélectionner --</option>
           <option value="Société de production">Société de production</option>
           <option value="Usager / famille">Usager / famille</option>
@@ -129,7 +129,7 @@
       <!-- DOMAINE D'ACTIVITES -->
       <div class="field-group full-width">
         <label>Domaine d'activités</label>
-        <select id="DOMAINE_D_ACTIVITES" data-type="choiceList">
+        <select id="DOMAINE_D_ACTIVITES" data-type="auto">
           <option value="">-- Sélectionner --</option>
           <option value="Cinéma">Cinéma</option>
           <option value="Patrimoine">Patrimoine</option>
@@ -212,6 +212,7 @@
 
   <script>
     let currentRecordId = null;
+    let gristTableData = null;
 
     grist.ready({ requiredAccess: 'full' });
 
@@ -229,6 +230,7 @@
       document.getElementById('success-banner').style.display = 'none';
 
       try {
+        gristTableData = await grist.docApi.fetchTable('CONTACTS');
         const today = new Date().toISOString().split('T')[0];
 
         const result = await grist.docApi.applyUserActions([
@@ -272,19 +274,14 @@
         });
 
         let message = "--- DIAGNOSTIC DES COLONNES ---\n\n";
-        
         if (invalids.length === 0) {
           message += "✅ PARFAIT ! Tous les " + valids.length + " champs du formulaire correspondent exactement aux colonnes Grist.\n";
         } else {
           message += "❌ INCOMPATIBILITÉS DÉTECTÉES (" + invalids.length + ") :\n";
           invalids.forEach(id => message += " - ID Formulaire introuvable : '" + id + "'\n");
-          
-          message += "\n📋 Colonnes actuellement disponibles dans Grist :\n";
-          gristColumns.forEach(col => message += " • " + col + "\n");
         }
 
         alert(message);
-
       } catch (err) {
         alert("Impossible de lire la structure Grist : " + err.message);
       }
@@ -324,8 +321,16 @@
       const selects = document.querySelectorAll('#form-container select');
       selects.forEach(select => {
         if (select.id && select.value !== '') {
-          const isChoiceList = select.getAttribute('data-type') === 'choiceList';
-          fieldsToSave[select.id] = isChoiceList ? ['L', select.value] : select.value;
+          const val = select.value;
+          const colId = select.id;
+          
+          // Test d'envoi adaptatif : si la valeur existante dans Grist est un tableau, on envoie ['L', val], sinon la valeur brute
+          if (gristTableData && gristTableData[colId] && Array.isArray(gristTableData[colId][0])) {
+            fieldsToSave[colId] = ['L', val];
+          } else {
+            // Par défaut, on envoie la valeur sous forme simple
+            fieldsToSave[colId] = val;
+          }
         }
       });
 
@@ -334,23 +339,52 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        inputs.forEach(input => input.value = '');
-        selects.forEach(select => select.selectedIndex = 0);
-        currentRecordId = null;
+        // Si la première tentative réussit :
+         inputs.forEach(input => input.value = '');
+         selects.forEach(select => select.selectedIndex = 0);
+         currentRecordId = null;
 
-        document.getElementById('form-container').style.display = 'none';
-        document.getElementById('action-container').style.display = 'flex';
+         document.getElementById('form-container').style.display = 'none';
+         document.getElementById('action-container').style.display = 'flex';
 
-        const banner = document.getElementById('success-banner');
-        banner.style.display = 'block';
+         const banner = document.getElementById('success-banner');
+         banner.style.display = 'block';
 
-        setTimeout(() => {
-          banner.style.display = 'none';
-        }, 5000);
+         setTimeout(() => {
+           banner.style.display = 'none';
+         }, 5000);
 
       } catch (err) {
-        console.error('Erreur lors de la sauvegarde :', err);
-        alert("Erreur lors de la sauvegarde : " + err.message);
+        // En cas d'erreur de format d'encodage de liste de choix, tentative automatique au format Liste ['L', val]
+        try {
+          selects.forEach(select => {
+            if (select.id && select.value !== '') {
+              fieldsToSave[select.id] = ['L', select.value];
+            }
+          });
+          
+          await grist.docApi.applyUserActions([
+            ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
+          ]);
+
+          inputs.forEach(input => input.value = '');
+          selects.forEach(select => select.selectedIndex = 0);
+          currentRecordId = null;
+
+          document.getElementById('form-container').style.display = 'none';
+          document.getElementById('action-container').style.display = 'flex';
+
+          const banner = document.getElementById('success-banner');
+          banner.style.display = 'block';
+
+          setTimeout(() => {
+            banner.style.display = 'none';
+          }, 5000);
+
+        } catch (err2) {
+          console.error('Erreur lors de la sauvegarde :', err2);
+          alert("Erreur lors de la sauvegarde : " + err2.message);
+        }
       }
     }
   </script>

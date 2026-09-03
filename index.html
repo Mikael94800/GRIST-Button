@@ -1,7 +1,53 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: sans-serif;
+    }
+    .btn-custom {
+      background-color: #1677ff;
+      color: white;
+      border: none;
+      padding: 24px 36px;
+      font-size: 24px;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      transition: background-color 0.2s;
+    }
+    .btn-custom:hover { background-color: #0958d9; }
+  </style>
+</head>
 <body>
-  <p>Widget en maintenance...</p>
+
+  <button class="btn-custom" onclick="creerContact()">+ Créer un nouveau contact</button>
+
+  <script>
+    grist.ready({ requiredAccess: 'full' });
+
+    async function creerContact() {
+      try {
+        // 1. Création du contact dans la table CONTACTS
+        const result = await grist.docApi.applyUserActions([
+          ['AddRecord', 'CONTACTS', null, {}]
+        ]);
+        const newRowId = Array.isArray(result) ? result[0] : result;
+
+        if (newRowId) {
+          // 2. Déplacement du curseur natif
+          await grist.setCursorPos({ rowId: newRowId });
+        }
+      } catch (err) {
+        console.error('Erreur :', err);
+      }
+    }
+  </script>
 </body>
 </html>

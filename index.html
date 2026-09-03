@@ -16,8 +16,8 @@
       background-color: #1677ff;
       color: white;
       border: none;
-      padding: 24px 36px;
-      font-size: 24px;
+      padding: 24px 36px;       /* Grandes dimensions internes */
+      font-size: 24px;          /* Grande taille de texte */
       font-weight: bold;
       border-radius: 12px;
       cursor: pointer;
@@ -38,22 +38,31 @@
   <button class="btn-custom" onclick="creerContact()">+ Créer un nouveau contact</button>
 
   <script>
-    grist.ready({ requiredAccess: 'full' });
+    // Déclaration de l'accès et enregistrement auprès de l'API Grist
+    grist.ready({
+      requiredAccess: 'full',
+      columns: ['id']
+    });
+
+    // Permet au widget d'être reconnu comme émetteur de sélection
+    grist.onRecord(function(record) {
+      // Écoute de l'enregistrement courant requise pour la liaison "SÉLECTIONNER PAR"
+    });
 
     async function creerContact() {
       try {
-        // 1. Création du contact dans la table
+        // 1. Création de la ligne dans la table CONTACTS
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, {}]
         ]);
 
-        // 2. Extraction de l'ID du nouveau contact
+        // 2. Récupération de l'ID généré
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // 3. Notification à Grist pour alimenter la sélection (SÉLECTIONNER PAR)
+          // 3. Transmission de l'ID à la vue liée
           await grist.setSelectedRows([newRowId]);
-          // 4. Déplacement du curseur global sur la ligne
+          // 4. Déplacement du curseur global
           await grist.setCursorPos({ rowId: newRowId });
         }
       } catch (err) {

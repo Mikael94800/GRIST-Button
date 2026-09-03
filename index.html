@@ -11,13 +11,16 @@
     .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); transition: background-color 0.2s; }
     .btn-create:hover { background-color: #0958d9; }
     
-    /* Notification de succès */
     .alert-success { display: none; background-color: #f6ffed; border: 1px solid #b7eb8f; color: #274fee; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; width: 100%; box-shadow: 0 2px 8px rgba(82, 196, 26, 0.15); }
     
     #form-container { display: none; background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
     .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1677ff; }
     .form-title { font-size: 18px; font-weight: 700; color: #1f2937; }
     .badge-id { background: #e6f4ff; color: #0958d9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+    
+    .btn-debug { background-color: #722ed1; color: white; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; }
+    .btn-debug:hover { background-color: #531dab; }
+
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .full-width { grid-column: span 2; }
     .field-group { display: flex; flex-direction: column; gap: 4px; }
@@ -37,7 +40,10 @@
 
   <div id="form-container">
     <div class="form-header">
-      <span class="form-title">Saisie d'un Nouveau Contact</span>
+      <div>
+        <span class="form-title">Saisie d'un Nouveau Contact</span>
+        <button class="btn-debug" style="margin-left: 10px;" onclick="verifierChampsEtColonnes()">🔍 Vérifier les IDs</button>
+      </div>
       <span id="display-id" class="badge-id">Création en cours...</span>
     </div>
 
@@ -83,7 +89,7 @@
       <!-- TYPE DE STRUCTURE / CONTACT -->
       <div class="field-group">
         <label>Type de Structure / Contact</label>
-        <select id="TYPE_DE_STRUCTURE___CONTACT" data-type="choiceList">
+        <select id="TYPE_DE_STRUCTURE_CONTACT" data-type="choiceList">
           <option value="">-- Sélectionner --</option>
           <option value="Société de production">Société de production</option>
           <option value="Usager / famille">Usager / famille</option>
@@ -220,7 +226,6 @@
     }
 
     async function demarrerNouveauContact() {
-      // Masquer la bannière de succès au cas où elle était affichée
       document.getElementById('success-banner').style.display = 'none';
 
       try {
@@ -244,6 +249,44 @@
       } catch (err) {
         console.error('Erreur lors de la création :', err);
         alert("Erreur réseau/Grist : " + err.message);
+      }
+    }
+
+    async function verifierChampsEtColonnes() {
+      try {
+        const tableData = await grist.docApi.fetchTable('CONTACTS');
+        const gristColumns = Object.keys(tableData);
+
+        const formElements = document.querySelectorAll('#form-container input, #form-container select, #form-container textarea');
+        let valids = [];
+        let invalids = [];
+
+        formElements.forEach(el => {
+          if (el.id) {
+            if (gristColumns.includes(el.id)) {
+              valids.push(el.id);
+            } else {
+              invalids.push(el.id);
+            }
+          }
+        });
+
+        let message = "--- DIAGNOSTIC DES COLONNES ---\n\n";
+        
+        if (invalids.length === 0) {
+          message += "✅ PARFAIT ! Tous les " + valids.length + " champs du formulaire correspondent exactement aux colonnes Grist.\n";
+        } else {
+          message += "❌ INCOMPATIBILITÉS DÉTECTÉES (" + invalids.length + ") :\n";
+          invalids.forEach(id => message += " - ID Formulaire introuvable : '" + id + "'\n");
+          
+          message += "\n📋 Colonnes actuellement disponibles dans Grist :\n";
+          gristColumns.forEach(col => message += " • " + col + "\n");
+        }
+
+        alert(message);
+
+      } catch (err) {
+        alert("Impossible de lire la structure Grist : " + err.message);
       }
     }
 
@@ -291,26 +334,22 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        // Reinitialisation des champs
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         currentRecordId = null;
 
-        // Masquer le formulaire et réafficher le bouton d'accueil
         document.getElementById('form-container').style.display = 'none';
         document.getElementById('action-container').style.display = 'flex';
 
-        // Afficher la bannière de confirmation
         const banner = document.getElementById('success-banner');
         banner.style.display = 'block';
 
-        // Masquer la bannière automatiquement après 5 secondes
         setTimeout(() => {
           banner.style.display = 'none';
         }, 5000);
 
       } catch (err) {
-        console.error('Erreur globale d\'enregistrement :', err);
+        console.error('Erreur lors de la sauvegarde :', err);
         alert("Erreur lors de la sauvegarde : " + err.message);
       }
     }

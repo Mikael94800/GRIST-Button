@@ -25,8 +25,14 @@
     .full-width { grid-column: span 2; }
     .field-group { display: flex; flex-direction: column; gap: 4px; }
     label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
-    input, select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; }
+    input[type="text"], input[type="date"], input[type="email"], input[type="tel"], select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; width: 100%; }
     input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
+    
+    /* Style spécifique pour les blocs de cases à cocher */
+    .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; font-weight: normal; cursor: pointer; }
+    .checkbox-item input { width: auto; cursor: pointer; }
+
     .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-finish:hover { background-color: #389e0d; }
   </style>
@@ -68,7 +74,7 @@
         </select>
       </div>
 
-      <!-- STATUT JURIDIQUE (IDs Références vers ETIQUETTES) -->
+      <!-- STATUT JURIDIQUE -->
       <div class="field-group">
         <label>Statut Juridique</label>
         <select id="STATUT_JURIDIQUE">
@@ -86,7 +92,7 @@
         </select>
       </div>
 
-      <!-- TYPE DE STRUCTURE / CONTACT (IDs Références vers ETIQUETTES) -->
+      <!-- TYPE DE STRUCTURE / CONTACT -->
       <div class="field-group">
         <label>Type de Structure / Contact</label>
         <select id="TYPE_DE_STRUCTURE_CONTACT">
@@ -126,7 +132,7 @@
         </select>
       </div>
 
-      <!-- DOMAINE D'ACTIVITES (IDs Références vers ETIQUETTES) -->
+      <!-- DOMAINE D'ACTIVITES -->
       <div class="field-group full-width">
         <label>Domaine d'activités</label>
         <select id="DOMAINE_D_ACTIVITES">
@@ -148,6 +154,27 @@
           <option value="15">Environnement et transition écologique</option>
           <option value="16">Autre</option>
         </select>
+      </div>
+
+      <!-- LISTES DIFFUSION CINÉMA (SELECTION MULTIPLE) -->
+      <div class="field-group">
+        <label>Listes Diffusion Cinéma</label>
+        <div class="checkbox-group" id="Listes_Diffusion_Cinema">
+          <label class="checkbox-item"><input type="checkbox" value="1"> Crèche</label>
+          <label class="checkbox-item"><input type="checkbox" value="2"> Enfance & Jeunesse</label>
+          <label class="checkbox-item"><input type="checkbox" value="3"> Enseignant élémentaire</label>
+          <label class="checkbox-item"><input type="checkbox" value="4"> Enseignant maternelle</label>
+        </div>
+      </div>
+
+      <!-- LISTE DIFFUSION DCP (SELECTION MULTIPLE) -->
+      <div class="field-group">
+        <label>Liste Diffusion DCP</label>
+        <div class="checkbox-group" id="Liste_Diffusion_DCP">
+          <label class="checkbox-item"><input type="checkbox" value="1"> EAC</label>
+          <label class="checkbox-item"><input type="checkbox" value="2"> Arts visuels</label>
+          <label class="checkbox-item"><input type="checkbox" value="3"> Patrimoine & Archives</label>
+        </div>
       </div>
 
       <!-- NOM STRUCTURE -->
@@ -257,7 +284,7 @@
         const tableData = await grist.docApi.fetchTable('CONTACTS');
         const gristColumns = Object.keys(tableData);
 
-        const formElements = document.querySelectorAll('#form-container input, #form-container select, #form-container textarea');
+        const formElements = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container select, #form-container textarea, .checkbox-group');
         let valids = [];
         let invalids = [];
 
@@ -310,14 +337,14 @@
       const fieldsToSave = {};
 
       // Traitement des inputs texte / date / email / tel
-      const inputs = document.querySelectorAll('#form-container input, #form-container textarea');
+      const inputs = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container textarea');
       inputs.forEach(input => {
         if (input.id && input.value !== '') {
           fieldsToSave[input.id] = input.value;
         }
       });
 
-      // Champs configurés en Références vers la table ETIQUETTES
+      // Champs configurés en Références uniques vers ETIQUETTES
       const refFields = ['STATUT_JURIDIQUE', 'TYPE_DE_STRUCTURE_CONTACT', 'DOMAINE_D_ACTIVITES'];
 
       // Traitement des select
@@ -327,11 +354,31 @@
           const valNum = parseInt(select.value, 10);
 
           if (refFields.includes(select.id) && !isNaN(valNum)) {
-            // Envoi sous forme d'ID de Référence ['L', id] pour liste de références
             fieldsToSave[select.id] = ['L', valNum];
           } else {
-            // Pour les textes classiques (ex: Service)
             fieldsToSave[select.id] = select.value;
+          }
+        }
+      });
+
+      // Traitement des groupes de Checkboxes (Listes de diffusion multiples)
+      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Liste_Diffusion_DCP'];
+      
+      multiSelectGroups.forEach(groupId => {
+        const container = document.getElementById(groupId);
+        if (container) {
+          const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
+          if (checkedBoxes.length > 0) {
+            const idsList = ['L'];
+            checkedBoxes.forEach(box => {
+              const idVal = parseInt(box.value, 10);
+              if (!isNaN(idVal)) {
+                idsList.push(idVal);
+              }
+            });
+            if (idsList.length > 1) {
+              fieldsToSave[groupId] = idsList;
+            }
           }
         }
       });
@@ -341,8 +388,11 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
+        // Reinitialisation des champs
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
+        document.querySelectorAll('#form-container input[type="checkbox"]').forEach(box => box.checked = false);
+        
         currentRecordId = null;
 
         document.getElementById('form-container').style.display = 'none';

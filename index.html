@@ -47,18 +47,14 @@
           ['AddRecord', 'CONTACTS', null, {}]
         ]);
 
-        // 2. Extraction de l'ID généré
+        // 2. Récupération de l'ID généré
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // 3. Positionnement du curseur
+          // 3. Sélection forcée de la ligne sur la vue intermédiaire CONTACTS_LIEN
+          await grist.setCursorPos({ rowId: newRowId, sectionId: 'CONTACTS_LIEN' });
+          // 4. Maintien du curseur global
           await grist.setCursorPos({ rowId: newRowId });
-
-          // 4. Force la navigation vers la ligne spécifique
-          grist.selectedPos = { rowId: newRowId };
-          
-          // 5. Utilisation de la commande d'ouverture de ligne
-          await grist.docApi.getAccessToken({ readOnly: false });
         }
       } catch (err) {
         console.error('Erreur lors de la création du contact :', err);

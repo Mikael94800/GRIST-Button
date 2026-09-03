@@ -8,9 +8,6 @@
       margin: 0;
       padding: 16px;
       font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
     }
     .btn-custom {
       background-color: #1677ff;
@@ -23,14 +20,9 @@
       cursor: pointer;
       width: 100%;
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      transition: background-color 0.2s, transform 0.1s;
+      transition: background-color 0.2s;
     }
-    .btn-custom:hover {
-      background-color: #0958d9;
-    }
-    .btn-custom:active {
-      transform: scale(0.98);
-    }
+    .btn-custom:hover { background-color: #0958d9; }
   </style>
 </head>
 <body>
@@ -42,22 +34,18 @@
 
     async function creerContact() {
       try {
-        // 1. Désactiver les anciens marquages dans la table CONTACTS (si besoin)
-        // 2. Ajouter le nouveau contact avec la date du jour pour l'isoler
-        const now = new Date().toISOString();
+        // 1. Création du contact dans la table CONTACTS
         const result = await grist.docApi.applyUserActions([
-          ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': now }]
+          ['AddRecord', 'CONTACTS', null, {}]
         ]);
-
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // Force le signal d'action utilisateur natif
+          // 2. Déplacement du curseur natif
           await grist.setCursorPos({ rowId: newRowId });
-          await grist.docApi.getAccessToken({ readOnly: false });
         }
       } catch (err) {
-        console.error('Erreur lors de la création du contact :', err);
+        console.error('Erreur :', err);
       }
     }
   </script>

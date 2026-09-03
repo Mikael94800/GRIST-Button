@@ -17,9 +17,6 @@
     .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1677ff; }
     .form-title { font-size: 18px; font-weight: 700; color: #1f2937; }
     .badge-id { background: #e6f4ff; color: #0958d9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
-    
-    .btn-debug { background-color: #722ed1; color: white; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; }
-    .btn-debug:hover { background-color: #531dab; }
 
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .full-width { grid-column: span 2; }
@@ -28,7 +25,7 @@
     input[type="text"], input[type="date"], input[type="email"], input[type="tel"], select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; width: 100%; }
     input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
     
-    /* Style spécifique pour les blocs de cases à cocher */
+    /* Blocs de cases à cocher */
     .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
     .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; font-weight: normal; cursor: pointer; }
     .checkbox-item input { width: auto; cursor: pointer; }
@@ -46,10 +43,7 @@
 
   <div id="form-container">
     <div class="form-header">
-      <div>
-        <span class="form-title">Saisie d'un Nouveau Contact</span>
-        <button class="btn-debug" style="margin-left: 10px;" onclick="verifierChampsEtColonnes()">🔍 Vérifier les IDs</button>
-      </div>
+      <span class="form-title">Saisie d'un Nouveau Contact</span>
       <span id="display-id" class="badge-id">Création en cours...</span>
     </div>
 
@@ -156,7 +150,7 @@
         </select>
       </div>
 
-      <!-- LISTES DIFFUSION CINÉMA (SELECTION MULTIPLE) -->
+      <!-- LISTES DIFFUSION CINÉMA -->
       <div class="field-group">
         <label>Listes Diffusion Cinéma</label>
         <div class="checkbox-group" id="Listes_Diffusion_Cinema">
@@ -167,7 +161,7 @@
         </div>
       </div>
 
-      <!-- LISTE DIFFUSION DCP (SELECTION MULTIPLE) -->
+      <!-- LISTE DIFFUSION DCP -->
       <div class="field-group">
         <label>Liste Diffusion DCP</label>
         <div class="checkbox-group" id="Liste_Diffusion_DCP">
@@ -276,39 +270,6 @@
       } catch (err) {
         console.error('Erreur lors de la création :', err);
         alert("Erreur réseau/Grist : " + err.message);
-      }
-    }
-
-    async function verifierChampsEtColonnes() {
-      try {
-        const tableData = await grist.docApi.fetchTable('CONTACTS');
-        const gristColumns = Object.keys(tableData);
-
-        const formElements = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container select, #form-container textarea, .checkbox-group');
-        let valids = [];
-        let invalids = [];
-
-        formElements.forEach(el => {
-          if (el.id) {
-            if (gristColumns.includes(el.id)) {
-              valids.push(el.id);
-            } else {
-              invalids.push(el.id);
-            }
-          }
-        });
-
-        let message = "--- DIAGNOSTIC DES COLONNES ---\n\n";
-        if (invalids.length === 0) {
-          message += "✅ PARFAIT ! Tous les " + valids.length + " champs du formulaire correspondent exactement aux colonnes Grist.\n";
-        } else {
-          message += "❌ INCOMPATIBILITÉS DÉTECTÉES (" + invalids.length + ") :\n";
-          invalids.forEach(id => message += " - ID Formulaire introuvable : '" + id + "'\n");
-        }
-
-        alert(message);
-      } catch (err) {
-        alert("Impossible de lire la structure Grist : " + err.message);
       }
     }
 

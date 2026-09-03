@@ -42,18 +42,16 @@
 
     async function creerContact() {
       try {
-        // 1. Création de la ligne dans la table CONTACTS
+        // 1. Ajout de la ligne dans CONTACTS
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, {}]
         ]);
 
-        // 2. Récupération de l'ID généré
+        // 2. Récupération de l'ID du nouveau contact
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // 3. Sélection forcée de la ligne sur la vue intermédiaire CONTACTS_LIEN
-          await grist.setCursorPos({ rowId: newRowId, sectionId: 'CONTACTS_LIEN' });
-          // 4. Maintien du curseur global
+          // 3. Déplacement du curseur global (met à jour la vue intermédiaire)
           await grist.setCursorPos({ rowId: newRowId });
         }
       } catch (err) {

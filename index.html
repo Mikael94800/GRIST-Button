@@ -137,26 +137,26 @@
         <input type="date" id="DATE_SAISIE_CONTACTS" onchange="sauvegarderChamp('DATE_SAISIE_CONTACTS', this.value)">
       </div>
 
-      <!-- Service (Liste fermée) -->
+      <!-- Service (Menu déroulant) -->
       <div class="field-group">
         <label>Service</label>
         <select id="Service" onchange="sauvegarderChamp('Service', this.value)">
           <option value="">-- Sélectionner un service --</option>
           <option value="Direction">Direction</option>
           <option value="Houdremont">Houdremont</option>
-          <option value="Autre">Autre</option>
+          <!-- Ajoute tes autres options réelles ici -->
         </select>
       </div>
 
-      <!-- Statut Juridique (Liste fermée) -->
+      <!-- Statut Juridique (Menu déroulant) -->
       <div class="field-group">
         <label>Statut Juridique</label>
         <select id="STATUT_JURIDIQUE" onchange="sauvegarderChamp('STATUT_JURIDIQUE', this.value)">
           <option value="">-- Sélectionner un statut --</option>
           <option value="Association">Association</option>
-          <option value="Entreprise">Entreprise</option>
-          <option value="Collectivité / Public">Collectivité / Public</option>
-          <option value="Particulier">Particulier</option>
+          <option value="Collectivité territoriale">Collectivité territoriale</option>
+          <option value="Société">Société</option>
+          <!-- Ajoute tes autres options réelles ici -->
         </select>
       </div>
 
@@ -167,8 +167,7 @@
           <option value="">-- Sélectionner un type --</option>
           <option value="Partenaire">Partenaire</option>
           <option value="Prestataire">Prestataire</option>
-          <option value="Inscrit / Usager">Inscrit / Usager</option>
-          <option value="Institutionnel">Institutionnel</option>
+          <!-- Ajoute tes autres options réelles ici -->
         </select>
       </div>
 
@@ -246,30 +245,36 @@
           ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
         ]);
 
-        // Correction de la lecture de l'ID d'enregistrement
-        if (Array.isArray(result)) {
-          currentRecordId = typeof result[0] === 'object' ? result[0].id : result[0];
+        // Extraction robuste de l'ID numérique
+        let extractedId = null;
+        if (typeof result === 'number') {
+          extractedId = result;
+        } else if (Array.isArray(result)) {
+          const item = result[0];
+          extractedId = (typeof item === 'object' && item !== null) ? (item.id || item.rowId || Object.values(item)[0]) : item;
         } else if (typeof result === 'object' && result !== null) {
-          currentRecordId = result.id || result;
-        } else {
-          currentRecordId = result;
+          extractedId = result.id || result.rowId || Object.values(result)[0];
         }
 
-        if (currentRecordId) {
+        currentRecordId = Number(extractedId);
+
+        if (currentRecordId && !isNaN(currentRecordId)) {
           document.getElementById('display-id').innerText = `ID: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
 
-          // Basculement de l'affichage vers le formulaire
+          // Basculement d'affichage
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
+        } else {
+          alert("Erreur lors de la récupération du numéro d'ID du contact.");
         }
       } catch (err) {
         console.error('Erreur lors de la création du contact :', err);
-        alert("Erreur lors de la création de la ligne dans Grist. Assurez-vous que le widget a les accès complets.");
+        alert("Erreur d'accès à Grist. Vérifiez que le niveau d'accès du widget est réglé sur 'Accès complet'.");
       }
     }
 
-    // Sauvegarde en temps réel à chaque modification d'un champ
+    // Sauvegarde en temps réel à chaque saisie
     async function sauvegarderChamp(colonne, valeur) {
       if (!currentRecordId) return;
 
@@ -278,12 +283,11 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, { [colonne]: valeur }]
         ]);
       } catch (err) {
-        console.error(`Erreur de sauvegarde sur le champ ${colonne} :`, err);
+        console.error(`Erreur de sauvegarde sur ${colonne} :`, err);
       }
     }
 
     function validerEtReinitialiser() {
-      // Reinitialiser les champs textuels et sélecteurs
       const inputs = document.querySelectorAll('#form-container input, #form-container textarea');
       inputs.forEach(input => input.value = '');
 
@@ -292,7 +296,6 @@
 
       currentRecordId = null;
 
-      // Retour à l'écran du bouton bleu
       document.getElementById('form-container').style.display = 'none';
       document.getElementById('action-container').style.display = 'flex';
     }

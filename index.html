@@ -51,14 +51,14 @@
         const newRowId = Array.isArray(result) ? result[0] : result;
 
         if (newRowId) {
-          // 3. Déplacement du curseur global
+          // 3. Positionnement du curseur
           await grist.setCursorPos({ rowId: newRowId });
 
-          // 4. Force la navigation de la page principale sur la ligne créée
-          window.parent.postMessage({
-            action: 'moveto',
-            rowId: newRowId
-          }, '*');
+          // 4. Force la navigation vers la ligne spécifique
+          grist.selectedPos = { rowId: newRowId };
+          
+          // 5. Utilisation de la commande d'ouverture de ligne
+          await grist.docApi.getAccessToken({ readOnly: false });
         }
       } catch (err) {
         console.error('Erreur lors de la création du contact :', err);

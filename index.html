@@ -33,7 +33,7 @@
   <div id="form-container">
     <div class="form-header">
       <span class="form-title">Saisie d'un Nouveau Contact</span>
-      <span id="display-id" class="badge-id">ID: --</span>
+      <span id="display-id" class="badge-id">Création en cours...</span>
     </div>
 
     <div class="grid">
@@ -208,33 +208,27 @@
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        const result = await grist.docApi.applyUserActions([
+        // 1. Ajouter la nouvelle ligne
+        await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
         ]);
 
-        let extractedId = null;
-        if (typeof result === 'number') {
-          extractedId = result;
-        } else if (Array.isArray(result)) {
-          const item = result[0];
-          extractedId = (typeof item === 'object' && item !== null) ? (item.id || item.rowId || Object.values(item)[0]) : item;
-        } else if (typeof result === 'object' && result !== null) {
-          extractedId = result.id || result.rowId || Object.values(result)[0];
-        }
-
-        currentRecordId = Number(extractedId);
-
-        if (currentRecordId && !isNaN(currentRecordId)) {
-          document.getElementById('display-id').innerText = `ID: ${currentRecordId}`;
+        // 2. Récupérer immédiatement la ligne la plus récente pour cibler son ID exact
+        const records = await grist.docApi.fetchTable('CONTACTS');
+        if (records && records.id && records.id.length > 0) {
+          currentRecordId = records.id[records.id.length - 1]; // Dernier ID réel
+          
+          document.getElementById('display-id').innerText = `Ligne Grist N° ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
 
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
         } else {
-          alert("Erreur de création de la ligne dans Grist.");
+          alert("Impossible de déterminer le dernier identifiant inséré.");
         }
       } catch (err) {
         console.error('Erreur lors de la création :', err);
+        alert("Erreur lors de la création de la ligne : " + err.message);
       }
     }
 
@@ -255,9 +249,12 @@
       }
     }
 
-    // Envoi global au clic sur "Valider et terminer la fiche"
+    // Envoi global vers la bonne ligne
     async function validerEtSauvegarderTout() {
-      if (!currentRecordId) return;
+      if (!currentRecordId) {
+        alert("Aucun ID de ligne actif.");
+        return;
+      }
 
       const fieldsToSave = {};
 
@@ -279,12 +276,11 @@
       });
 
       try {
-        // Envoi en un seul bloc vers Grist
         await grist.docApi.applyUserActions([
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        // Nettoyage et réinitialisation de l'affichage
+        // Nettoyage et réinitialisation
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         currentRecordId = null;
@@ -294,7 +290,7 @@
 
       } catch (err) {
         console.error('Erreur globale d\'enregistrement :', err);
-        alert("Erreur lors de la sauvegarde dans Grist : vérifiez les noms de colonnes dans la console ou contactez l'administrateur.\n\nDétail : " + err.message);
+        alert("Erreur lors de la sauvegarde : " + err.message);
       }
     }
   </script>

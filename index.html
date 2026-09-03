@@ -40,13 +40,13 @@
       <!-- DATE DE SAISIE -->
       <div class="field-group">
         <label>Date de saisie</label>
-        <input type="date" id="DATE_SAISIE_CONTACTS" onchange="sauvegarderChamp('DATE_SAISIE_CONTACTS', this.value)">
+        <input type="date" id="DATE_SAISIE_CONTACTS">
       </div>
 
       <!-- SERVICE / ORIGINE -->
       <div class="field-group">
         <label>Service (Origine)</label>
-        <select id="Service" onchange="sauvegarderChamp('Service', this.value, 'choice')">
+        <select id="Service">
           <option value="">-- Sélectionner --</option>
           <option value="Arts visuels">Arts visuels</option>
           <option value="Cinéma">Cinéma</option>
@@ -60,7 +60,7 @@
       <!-- STATUT JURIDIQUE -->
       <div class="field-group">
         <label>Statut Juridique</label>
-        <select id="STATUT_JURIDIQUE" onchange="sauvegarderChamp('STATUT_JURIDIQUE', this.value, 'choiceList')">
+        <select id="STATUT_JURIDIQUE" data-type="choiceList">
           <option value="">-- Sélectionner --</option>
           <option value="Collectivités territoriales">Collectivités territoriales</option>
           <option value="Association">Association</option>
@@ -78,7 +78,7 @@
       <!-- TYPE DE STRUCTURE / CONTACT -->
       <div class="field-group">
         <label>Type de Structure / Contact</label>
-        <select id="TYPE_DE_STRUCTURE___CONTACT" onchange="sauvegarderChamp('TYPE_DE_STRUCTURE___CONTACT', this.value, 'choiceList')">
+        <select id="TYPE_DE_STRUCTURE___CONTACT" data-type="choiceList">
           <option value="">-- Sélectionner --</option>
           <option value="Société de production">Société de production</option>
           <option value="Usager / famille">Usager / famille</option>
@@ -118,7 +118,7 @@
       <!-- DOMAINE D'ACTIVITES -->
       <div class="field-group full-width">
         <label>Domaine d'activités</label>
-        <select id="DOMAINE_D_ACTIVITES" onchange="sauvegarderChamp('DOMAINE_D_ACTIVITES', this.value, 'choiceList')">
+        <select id="DOMAINE_D_ACTIVITES" data-type="choiceList">
           <option value="">-- Sélectionner --</option>
           <option value="Cinéma">Cinéma</option>
           <option value="Patrimoine">Patrimoine</option>
@@ -142,39 +142,39 @@
       <!-- NOM STRUCTURE -->
       <div class="field-group full-width">
         <label>Nom Structure</label>
-        <input type="text" id="NOM_Structure" placeholder="Nom de la structure" oninput="sauvegarderChamp('NOM_Structure', this.value)">
+        <input type="text" id="NOM_Structure" placeholder="Nom de la structure">
       </div>
 
       <!-- NOM & PRENOM -->
       <div class="field-group">
         <label>Nom</label>
-        <input type="text" id="NOM" placeholder="Nom de famille" oninput="sauvegarderChamp('NOM', this.value)">
+        <input type="text" id="NOM" placeholder="Nom de famille">
       </div>
       <div class="field-group">
         <label>Prénom</label>
-        <input type="text" id="PRENOM" placeholder="Prénom" oninput="sauvegarderChamp('PRENOM', this.value)">
+        <input type="text" id="PRENOM" placeholder="Prénom">
       </div>
 
       <!-- EMAIL & TELEPHONE -->
       <div class="field-group">
         <label>Email Principal</label>
-        <input type="email" id="EMAIL_PRINCIPAL" placeholder="exemple@domaine.fr" oninput="sauvegarderChamp('EMAIL_PRINCIPAL', this.value)">
+        <input type="email" id="EMAIL_PRINCIPAL" placeholder="exemple@domaine.fr">
       </div>
       <div class="field-group">
         <label>Téléphone Principal</label>
-        <input type="tel" id="Telephone_Principal" placeholder="01 23 45 67 89" oninput="sauvegarderChamp('Telephone_Principal', this.value)">
+        <input type="tel" id="Telephone_Principal" placeholder="01 23 45 67 89">
       </div>
 
       <!-- FONCTION -->
       <div class="field-group full-width">
         <label>Fonction / Profession</label>
-        <input type="text" id="Fonction_Profession" placeholder="ex: Responsable, Chargé de mission..." oninput="sauvegarderChamp('Fonction_Profession', this.value)">
+        <input type="text" id="Fonction_Profession" placeholder="ex: Responsable, Chargé de mission...">
       </div>
 
       <!-- ADRESSE, CODE POSTAL, VILLE, PAYS -->
       <div class="field-group full-width">
         <label>Adresse</label>
-        <input type="text" id="Adresse" placeholder="Voie, numéro..." oninput="sauvegarderChamp('Adresse', this.value)">
+        <input type="text" id="Adresse" placeholder="Voie, numéro...">
       </div>
       <div class="field-group">
         <label>Code Postal</label>
@@ -182,21 +182,21 @@
       </div>
       <div class="field-group">
         <label>Ville</label>
-        <input type="text" id="Ville" placeholder="La Courneuve" oninput="sauvegarderChamp('Ville', this.value)">
+        <input type="text" id="Ville" placeholder="La Courneuve">
       </div>
       <div class="field-group full-width">
         <label>Pays</label>
-        <input type="text" id="Pays" placeholder="France" oninput="sauvegarderChamp('Pays', this.value)">
+        <input type="text" id="Pays" placeholder="France">
       </div>
 
       <!-- COMMENTAIRE -->
       <div class="field-group full-width">
         <label>Commentaire / Description</label>
-        <textarea id="Commentaire_Description" rows="2" oninput="sauvegarderChamp('Commentaire_Description', this.value)"></textarea>
+        <textarea id="Commentaire_Description" rows="2"></textarea>
       </div>
     </div>
 
-    <button class="btn-finish" onclick="validerEtReinitialiser()">✓ Valider et terminer la fiche</button>
+    <button class="btn-finish" onclick="validerEtSauvegarderTout()">✓ Valider et terminer la fiche</button>
   </div>
 
   <script>
@@ -238,43 +238,16 @@
       }
     }
 
-    // Gestion du format d'envoi selon le type de colonne Grist
-    async function sauvegarderChamp(colonne, valeur, type = 'text') {
-      if (!currentRecordId) return;
-
-      let formattedValue = valeur;
-      if (type === 'choiceList') {
-        // Envoi sous forme de Liste/Choix Multiple accepté par Grist
-        formattedValue = valeur ? ['L', valeur] : null;
-      } else if (type === 'choice') {
-        formattedValue = valeur || null;
-      }
-
-      try {
-        await grist.docApi.applyUserActions([
-          ['UpdateRecord', 'CONTACTS', currentRecordId, { [colonne]: formattedValue }]
-        ]);
-      } catch (err) {
-        console.error(`Erreur sur ${colonne} :`, err);
-      }
-    }
-
     // Autocomplétion de la Ville et du Pays via API Geo
     async function traiterCodePostal(cp) {
-      sauvegarderChamp('Code_Postal', cp);
-
       if (cp.trim().length === 5 && !isNaN(cp)) {
         try {
           const response = await fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json`);
           const data = await response.json();
 
           if (data && data.length > 0) {
-            const nomVille = data[0].nom;
-            document.getElementById('Ville').value = nomVille;
+            document.getElementById('Ville').value = data[0].nom;
             document.getElementById('Pays').value = 'France';
-
-            sauvegarderChamp('Ville', nomVille);
-            sauvegarderChamp('Pays', 'France');
           }
         } catch (e) {
           console.error("Erreur de recherche de commune :", e);
@@ -282,17 +255,47 @@
       }
     }
 
-    function validerEtReinitialiser() {
+    // Envoi global au clic sur "Valider et terminer la fiche"
+    async function validerEtSauvegarderTout() {
+      if (!currentRecordId) return;
+
+      const fieldsToSave = {};
+
+      // 1. Collecte des champs texte / date / textarea
       const inputs = document.querySelectorAll('#form-container input, #form-container textarea');
-      inputs.forEach(input => input.value = '');
+      inputs.forEach(input => {
+        if (input.id && input.value !== '') {
+          fieldsToSave[input.id] = input.value;
+        }
+      });
 
+      // 2. Collecte des listes déroulantes
       const selects = document.querySelectorAll('#form-container select');
-      selects.forEach(select => select.selectedIndex = 0);
+      selects.forEach(select => {
+        if (select.id && select.value !== '') {
+          const isChoiceList = select.getAttribute('data-type') === 'choiceList';
+          fieldsToSave[select.id] = isChoiceList ? ['L', select.value] : select.value;
+        }
+      });
 
-      currentRecordId = null;
+      try {
+        // Envoi en un seul bloc vers Grist
+        await grist.docApi.applyUserActions([
+          ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
+        ]);
 
-      document.getElementById('form-container').style.display = 'none';
-      document.getElementById('action-container').style.display = 'flex';
+        // Nettoyage et réinitialisation de l'affichage
+        inputs.forEach(input => input.value = '');
+        selects.forEach(select => select.selectedIndex = 0);
+        currentRecordId = null;
+
+        document.getElementById('form-container').style.display = 'none';
+        document.getElementById('action-container').style.display = 'flex';
+
+      } catch (err) {
+        console.error('Erreur globale d\'enregistrement :', err);
+        alert("Erreur lors de la sauvegarde dans Grist : vérifiez les noms de colonnes dans la console ou contactez l'administrateur.\n\nDétail : " + err.message);
+      }
     }
   </script>
 </body>

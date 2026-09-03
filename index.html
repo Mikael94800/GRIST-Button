@@ -81,8 +81,8 @@
       gap: 4px;
     }
     label {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       color: #4b5563;
       text-transform: uppercase;
       letter-spacing: 0.3px;
@@ -93,6 +93,7 @@
       border-radius: 6px;
       font-size: 14px;
       outline: none;
+      background-color: #fff;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     input:focus, select:focus, textarea:focus {
@@ -104,7 +105,7 @@
       background-color: #52c41a;
       color: white;
       border: none;
-      padding: 12px 20px;
+      padding: 14px 20px;
       font-size: 16px;
       font-weight: bold;
       border-radius: 8px;
@@ -125,26 +126,59 @@
   <!-- Écran 2 : Formulaire de saisie -->
   <div id="form-container">
     <div class="form-header">
-      <span class="form-title">Nouveau Contact</span>
+      <span class="form-title">Saisie d'un Nouveau Contact</span>
       <span id="display-id" class="badge-id">ID: --</span>
     </div>
 
     <div class="grid">
+      <!-- Date de Saisie -->
       <div class="field-group">
         <label>Date de saisie</label>
         <input type="date" id="DATE_SAISIE_CONTACTS" onchange="sauvegarderChamp('DATE_SAISIE_CONTACTS', this.value)">
       </div>
 
+      <!-- Service (Liste fermée) -->
       <div class="field-group">
         <label>Service</label>
-        <input type="text" id="Service" placeholder="ex: Direction, Houdremont..." oninput="sauvegarderChamp('Service', this.value)">
+        <select id="Service" onchange="sauvegarderChamp('Service', this.value)">
+          <option value="">-- Sélectionner un service --</option>
+          <option value="Direction">Direction</option>
+          <option value="Houdremont">Houdremont</option>
+          <option value="Autre">Autre</option>
+        </select>
       </div>
 
+      <!-- Statut Juridique (Liste fermée) -->
       <div class="field-group">
-        <label>Nom Structure</label>
-        <input type="text" id="NOM_Structure" oninput="sauvegarderChamp('NOM_Structure', this.value)">
+        <label>Statut Juridique</label>
+        <select id="STATUT_JURIDIQUE" onchange="sauvegarderChamp('STATUT_JURIDIQUE', this.value)">
+          <option value="">-- Sélectionner un statut --</option>
+          <option value="Association">Association</option>
+          <option value="Entreprise">Entreprise</option>
+          <option value="Collectivité / Public">Collectivité / Public</option>
+          <option value="Particulier">Particulier</option>
+        </select>
       </div>
 
+      <!-- Type de Structure / Contact -->
+      <div class="field-group">
+        <label>Type de Structure / Contact</label>
+        <select id="TYPE_DE_STRUCTURE___CONTACT" onchange="sauvegarderChamp('TYPE_DE_STRUCTURE___CONTACT', this.value)">
+          <option value="">-- Sélectionner un type --</option>
+          <option value="Partenaire">Partenaire</option>
+          <option value="Prestataire">Prestataire</option>
+          <option value="Inscrit / Usager">Inscrit / Usager</option>
+          <option value="Institutionnel">Institutionnel</option>
+        </select>
+      </div>
+
+      <!-- Nom Structure -->
+      <div class="field-group full-width">
+        <label>Nom Structure</label>
+        <input type="text" id="NOM_Structure" placeholder="Nom de l'organisation ou association" oninput="sauvegarderChamp('NOM_Structure', this.value)">
+      </div>
+
+      <!-- Nom & Prénom -->
       <div class="field-group">
         <label>Nom</label>
         <input type="text" id="NOM" placeholder="Nom de famille" oninput="sauvegarderChamp('NOM', this.value)">
@@ -155,6 +189,7 @@
         <input type="text" id="PRENOM" placeholder="Prénom" oninput="sauvegarderChamp('PRENOM', this.value)">
       </div>
 
+      <!-- Email & Téléphone -->
       <div class="field-group">
         <label>Email Principal</label>
         <input type="email" id="EMAIL_PRINCIPAL" placeholder="exemple@domaine.fr" oninput="sauvegarderChamp('EMAIL_PRINCIPAL', this.value)">
@@ -162,36 +197,39 @@
 
       <div class="field-group">
         <label>Téléphone Principal</label>
-        <input type="tel" id="Telephone_Principal" oninput="sauvegarderChamp('Telephone_Principal', this.value)">
+        <input type="tel" id="Telephone_Principal" placeholder="01 23 45 67 89" oninput="sauvegarderChamp('Telephone_Principal', this.value)">
       </div>
 
-      <div class="field-group">
+      <!-- Fonction -->
+      <div class="field-group full-width">
         <label>Fonction / Profession</label>
-        <input type="text" id="Fonction_Profession" oninput="sauvegarderChamp('Fonction_Profession', this.value)">
+        <input type="text" id="Fonction_Profession" placeholder="ex: Directrice, Chargé de projet..." oninput="sauvegarderChamp('Fonction_Profession', this.value)">
       </div>
 
+      <!-- Adresse, CP, Ville -->
       <div class="field-group full-width">
         <label>Adresse</label>
-        <input type="text" id="Adresse" oninput="sauvegarderChamp('Adresse', this.value)">
+        <input type="text" id="Adresse" placeholder="Numéro et nom de voie" oninput="sauvegarderChamp('Adresse', this.value)">
       </div>
 
       <div class="field-group">
         <label>Code Postal</label>
-        <input type="text" id="Code_Postal" oninput="sauvegarderChamp('Code_Postal', this.value)">
+        <input type="text" id="Code_Postal" placeholder="93300" oninput="sauvegarderChamp('Code_Postal', this.value)">
       </div>
 
       <div class="field-group">
         <label>Ville</label>
-        <input type="text" id="Ville" oninput="sauvegarderChamp('Ville', this.value)">
+        <input type="text" id="Ville" placeholder="La Courneuve" oninput="sauvegarderChamp('Ville', this.value)">
       </div>
 
+      <!-- Commentaire -->
       <div class="field-group full-width">
         <label>Commentaire / Description</label>
-        <textarea id="Commentaire_Description" rows="2" oninput="sauvegarderChamp('Commentaire_Description', this.value)"></textarea>
+        <textarea id="Commentaire_Description" rows="2" placeholder="Notes complémentaires..." oninput="sauvegarderChamp('Commentaire_Description', this.value)"></textarea>
       </div>
     </div>
 
-    <button class="btn-finish" onclick="validerEtReinitialiser()">✓ Valider la fiche</button>
+    <button class="btn-finish" onclick="validerEtReinitialiser()">✓ Valider et terminer la fiche</button>
   </div>
 
   <script>
@@ -203,27 +241,35 @@
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        // Création de la ligne dans la table CONTACTS
+        // 1. Création effective du record dans Grist
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
         ]);
 
-        currentRecordId = Array.isArray(result) ? result[0] : result;
+        // Correction de la lecture de l'ID d'enregistrement
+        if (Array.isArray(result)) {
+          currentRecordId = typeof result[0] === 'object' ? result[0].id : result[0];
+        } else if (typeof result === 'object' && result !== null) {
+          currentRecordId = result.id || result;
+        } else {
+          currentRecordId = result;
+        }
 
         if (currentRecordId) {
           document.getElementById('display-id').innerText = `ID: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
 
-          // Basculement de l'affichage
+          // Basculement de l'affichage vers le formulaire
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
         }
       } catch (err) {
         console.error('Erreur lors de la création du contact :', err);
+        alert("Erreur lors de la création de la ligne dans Grist. Assurez-vous que le widget a les accès complets.");
       }
     }
 
-    // Sauvegarde en temps réel lors de la frappe
+    // Sauvegarde en temps réel à chaque modification d'un champ
     async function sauvegarderChamp(colonne, valeur) {
       if (!currentRecordId) return;
 
@@ -232,18 +278,21 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, { [colonne]: valeur }]
         ]);
       } catch (err) {
-        console.error(`Erreur de sauvegarde sur ${colonne} :`, err);
+        console.error(`Erreur de sauvegarde sur le champ ${colonne} :`, err);
       }
     }
 
     function validerEtReinitialiser() {
-      // Nettoyage des champs
+      // Reinitialiser les champs textuels et sélecteurs
       const inputs = document.querySelectorAll('#form-container input, #form-container textarea');
       inputs.forEach(input => input.value = '');
 
+      const selects = document.querySelectorAll('#form-container select');
+      selects.forEach(select => select.selectedIndex = 0);
+
       currentRecordId = null;
 
-      // Retour à l'écran du bouton
+      // Retour à l'écran du bouton bleu
       document.getElementById('form-container').style.display = 'none';
       document.getElementById('action-container').style.display = 'flex';
     }

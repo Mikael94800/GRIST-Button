@@ -54,17 +54,11 @@
         <input type="date" id="DATE_SAISIE_CONTACTS">
       </div>
 
-      <!-- SERVICE / ORIGINE -->
+      <!-- SERVICE / ORIGINE (Généré dynamiquement selon profil utilisateur) -->
       <div class="field-group">
         <label>Service (Origine)</label>
         <select id="Service">
           <option value="">-- Sélectionner --</option>
-          <option value="Arts visuels">Arts visuels</option>
-          <option value="Cinéma">Cinéma</option>
-          <option value="EAC">EAC</option>
-          <option value="Houdremont">Houdremont</option>
-          <option value="Patrimoine">Patrimoine</option>
-          <option value="Direction">Direction</option>
         </select>
       </div>
 
@@ -150,25 +144,9 @@
         </select>
       </div>
 
-      <!-- LISTES DIFFUSION CINÉMA -->
-      <div class="field-group">
-        <label>Listes Diffusion Cinéma</label>
-        <div class="checkbox-group" id="Listes_Diffusion_Cinema">
-          <label class="checkbox-item"><input type="checkbox" value="1"> Crèche</label>
-          <label class="checkbox-item"><input type="checkbox" value="2"> Enfance & Jeunesse</label>
-          <label class="checkbox-item"><input type="checkbox" value="3"> Enseignant élémentaire</label>
-          <label class="checkbox-item"><input type="checkbox" value="4"> Enseignant maternelle</label>
-        </div>
-      </div>
-
-      <!-- LISTE DIFFUSION DCP -->
-      <div class="field-group">
-        <label>Liste Diffusion DCP</label>
-        <div class="checkbox-group" id="Liste_Diffusion_DCP">
-          <label class="checkbox-item"><input type="checkbox" value="1"> EAC</label>
-          <label class="checkbox-item"><input type="checkbox" value="2"> Arts visuels</label>
-          <label class="checkbox-item"><input type="checkbox" value="3"> Patrimoine & Archives</label>
-        </div>
+      <!-- CONTENEUR DYNAMIQUE DES LISTES DE DIFFUSION -->
+      <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <!-- Généré dynamiquement selon les droits -->
       </div>
 
       <!-- NOM STRUCTURE -->
@@ -233,8 +211,77 @@
 
   <script>
     let currentRecordId = null;
+    let currentUserProfile = "Direction"; // Par défaut
 
     grist.ready({ requiredAccess: 'full' });
+
+    // Récupération de l'utilisateur connecté et configuration des droits à l'initialisation
+    Promise.all([
+      grist.docApi.fetchTable('UTILISATEURS')
+    ]).then(([utilisateurs]) => {
+      grist.user.getCurrentUser().then(user => {
+        const currentUserEmail = user ? user.email : "";
+        const matchUser = utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase());
+        if (matchUser && matchUser.Service) {
+          currentUserProfile = matchUser.Service; // "Direction", "Cinéma", "Houdremont"
+        }
+        initialiserChampsDroitsUtilisateur();
+      });
+    }).catch(err => {
+      console.log("Mode repli Direction par défaut :", err);
+      initialiserChampsDroitsUtilisateur();
+    });
+
+    function initialiserChampsDroitsUtilisateur() {
+      // 1. Gestion du sélecteur "Service (Origine)"
+      const selectService = document.getElementById('Service');
+      let servicesDispos = ["Arts visuels", "Cinéma", "EAC", "Houdremont", "Patrimoine", "Direction"];
+
+      if (currentUserProfile === "Cinéma") {
+        servicesDispos = ["Cinéma"];
+      } else if (currentUserProfile === "Houdremont") {
+        servicesDispos = ["Houdremont"];
+      }
+
+      selectService.innerHTML = '<option value="">-- Sélectionner --</option>' + 
+        servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      // Si l'utilisateur n'a le choix que d'un seul service, on le sélectionne par défaut
+      if (servicesDispos.length === 1) {
+        selectService.value = servicesDispos[0];
+      }
+
+      // 2. Gestion des listes de diffusion visibles
+      const wrapper = document.getElementById('diffusion-containers-wrapper');
+      let listesDispos = [
+        { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: [{val:1, text:"Crèche"}, {val:2, text:"Enfance & Jeunesse"}, {val:3, text:"Enseignant élémentaire"}, {val:4, text:"Enseignant maternelle"}] },
+        { id: "Liste_Diffusion_DCP", label: "Liste Diffusion DCP", items: [{val:1, text:"EAC"}, {val:2, text:"Arts visuels"}, {val:3, text:"Patrimoine & Archives"}] }
+      ];
+
+      if (currentUserProfile === "Houdremont") {
+        listesDispos = [
+          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: [{val:1, text:"Houdremont 1"}, {val:2, text:"Houdremont 2"}] }
+        ];
+      } else if (currentUserProfile === "Cinéma") {
+        listesDispos = [
+          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: [{val:1, text:"Crèche"}, {val:2, text:"Enfance & Jeunesse"}, {val:3, text:"Enseignant élémentaire"}, {val:4, text:"Enseignant maternelle"}] },
+          { id: "Liste_Diffusion_DCP", label: "Liste Diffusion DCP", items: [{val:1, text:"EAC"}, {val:2, text:"Arts visuels"}, {val:3, text:"Patrimoine & Archives"}] }
+        ];
+      } else {
+        // Direction voit tout, on peut rajouter Houdremont si besoin dans le bloc global
+        listesDispos.push({ id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: [{val:1, text:"Houdremont 1"}, {val:2, text:"Houdremont 2"}] });
+      }
+
+      wrapper.style.gridTemplateColumns = listesDispos.length > 1 ? "1fr 1fr" : "1fr";
+      wrapper.innerHTML = listesDispos.map(grp => `
+        <div class="field-group">
+          <label>${grp.label}</label>
+          <div class="checkbox-group" id="${grp.id}">
+            ${grp.items.map(item => `<label class="checkbox-item"><input type="checkbox" value="${item.val}"> ${item.text}</label>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
 
     function parseGristId(response) {
       if (!response) return null;
@@ -261,6 +308,12 @@
         if (currentRecordId) {
           document.getElementById('display-id').innerText = `ID Ligne: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
+
+          // Si un service unique est assigné par profil, on le pré-remplit
+          const selectService = document.getElementById('Service');
+          if (selectService.options.length === 2) {
+            selectService.selectedIndex = 1;
+          }
 
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
@@ -297,7 +350,6 @@
 
       const fieldsToSave = {};
 
-      // Traitement des inputs texte / date / email / tel
       const inputs = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container textarea');
       inputs.forEach(input => {
         if (input.id && input.value !== '') {
@@ -305,10 +357,8 @@
         }
       });
 
-      // Champs configurés en Références uniques vers ETIQUETTES
       const refFields = ['STATUT_JURIDIQUE', 'TYPE_DE_STRUCTURE_CONTACT', 'DOMAINE_D_ACTIVITES'];
 
-      // Traitement des select
       const selects = document.querySelectorAll('#form-container select');
       selects.forEach(select => {
         if (select.id && select.value !== '') {
@@ -322,8 +372,8 @@
         }
       });
 
-      // Traitement des groupes de Checkboxes (Listes de diffusion multiples)
-      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Liste_Diffusion_DCP'];
+      // Récupération dynamique des groupes de Checkboxes affichés
+      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Liste_Diffusion_DCP', 'Listes_Diffusion_Houdremont'];
       
       multiSelectGroups.forEach(groupId => {
         const container = document.getElementById(groupId);
@@ -349,7 +399,6 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        // Reinitialisation des champs
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         document.querySelectorAll('#form-container input[type="checkbox"]').forEach(box => box.checked = false);

@@ -54,7 +54,7 @@
         <input type="date" id="DATE_SAISIE_CONTACTS">
       </div>
 
-      <!-- SERVICE / ORIGINE (Généré dynamiquement selon profil utilisateur) -->
+      <!-- SERVICE / ORIGINE -->
       <div class="field-group">
         <label>Service (Origine)</label>
         <select id="Service">
@@ -146,7 +146,7 @@
 
       <!-- CONTENEUR DYNAMIQUE DES LISTES DE DIFFUSION -->
       <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <!-- Généré dynamiquement selon les droits -->
+        <!-- Généré dynamiquement depuis la table ETIQUETTES -->
       </div>
 
       <!-- NOM STRUCTURE -->
@@ -211,28 +211,51 @@
 
   <script>
     let currentRecordId = null;
-    let currentUserProfile = "Direction"; // Par défaut
+    let currentUserProfile = "Direction"; 
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Récupération de l'utilisateur connecté et configuration des droits à l'initialisation
+    // Récupération simultanée de la table UTILISATEURS et de la table ETIQUETTES
     Promise.all([
-      grist.docApi.fetchTable('UTILISATEURS')
-    ]).then(([utilisateurs]) => {
+      grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
+      grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
+    ]).then(([utilisateurs, etiquettesRecords]) => {
+      
       grist.user.getCurrentUser().then(user => {
         const currentUserEmail = user ? user.email : "";
         const matchUser = utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase());
         if (matchUser && matchUser.Service) {
-          currentUserProfile = matchUser.Service; // "Direction", "Cinéma", "Houdremont"
+          currentUserProfile = matchUser.Service; 
         }
-        initialiserChampsDroitsUtilisateur();
+        construireInterface(etiquettesRecords);
+      }).catch(() => {
+        construireInterface(etiquettesRecords);
       });
+
     }).catch(err => {
-      console.log("Mode repli Direction par défaut :", err);
-      initialiserChampsDroitsUtilisateur();
+      console.error("Erreur de chargement initial :", err);
+      construireInterface([]);
     });
 
-    function initialiserChampsDroitsUtilisateur() {
+    function extraireValeursColonne(etiquettesRecords, nomColonne) {
+      if (!etiquettesRecords) return [];
+      let valeurs = [];
+      
+      // Si la table renvoyée est un tableau d'objets (format standard Grist fetchTable)
+      if (Array.isArray(etiquettesRecords)) {
+        etiquettesRecords.forEach(row => {
+          if (row[nomColonne] !== undefined && row[nomColonne] !== null && row[nomColonne] !== "") {
+            valeurs.push(row[nomColonne]);
+          }
+        });
+      } else if (etiquettesRecords[nomColonne]) {
+        // Format colonne par colonne
+        valeurs = etiquettesRecords[nomColonne].filter(v => v !== null && v !== "");
+      }
+      return [...new Set(valeurs)]; // Valeurs uniques
+    }
+
+    function construireInterface(etiquettesRecords) {
       // 1. Gestion du sélecteur "Service (Origine)"
       const selectService = document.getElementById('Service');
       let servicesDispos = ["Arts visuels", "Cinéma", "EAC", "Houdremont", "Patrimoine", "Direction"];
@@ -244,32 +267,36 @@
       }
 
       selectService.innerHTML = '<option value="">-- Sélectionner --</option>' + 
-        servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
+        servicesDispos.choices ? '' : servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
 
-      // Si l'utilisateur n'a le choix que d'un seul service, on le sélectionne par défaut
       if (servicesDispos.length === 1) {
         selectService.value = servicesDispos[0];
       }
 
-      // 2. Gestion des listes de diffusion visibles
+      // 2. Récupération dynamique des libellés depuis la table ETIQUETTES
+      const itemsCinema = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Cinema');
+      const itemsDirection = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Direction');
+      const itemsHoudremont = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Houdremont');
+
       const wrapper = document.getElementById('diffusion-containers-wrapper');
-      let listesDispos = [
-        { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: [{val:1, text:"Crèche"}, {val:2, text:"Enfance & Jeunesse"}, {val:3, text:"Enseignant élémentaire"}, {val:4, text:"Enseignant maternelle"}] },
-        { id: "Liste_Diffusion_DCP", label: "Liste Diffusion DCP", items: [{val:1, text:"EAC"}, {val:2, text:"Arts visuels"}, {val:3, text:"Patrimoine & Archives"}] }
-      ];
+      let listesDispos = [];
 
       if (currentUserProfile === "Houdremont") {
         listesDispos = [
-          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: [{val:1, text:"Houdremont 1"}, {val:2, text:"Houdremont 2"}] }
+          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: itemsHoudremont }
         ];
       } else if (currentUserProfile === "Cinéma") {
         listesDispos = [
-          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: [{val:1, text:"Crèche"}, {val:2, text:"Enfance & Jeunesse"}, {val:3, text:"Enseignant élémentaire"}, {val:4, text:"Enseignant maternelle"}] },
-          { id: "Liste_Diffusion_DCP", label: "Liste Diffusion DCP", items: [{val:1, text:"EAC"}, {val:2, text:"Arts visuels"}, {val:3, text:"Patrimoine & Archives"}] }
+          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: itemsCinema },
+          { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection }
         ];
       } else {
-        // Direction voit tout, on peut rajouter Houdremont si besoin dans le bloc global
-        listesDispos.push({ id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: [{val:1, text:"Houdremont 1"}, {val:2, text:"Houdremont 2"}] });
+        // Direction voit tout
+        listesDispos = [
+          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: itemsCinema },
+          { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection },
+          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: itemsHoudremont }
+        ];
       }
 
       wrapper.style.gridTemplateColumns = listesDispos.length > 1 ? "1fr 1fr" : "1fr";
@@ -277,7 +304,7 @@
         <div class="field-group">
           <label>${grp.label}</label>
           <div class="checkbox-group" id="${grp.id}">
-            ${grp.items.map(item => `<label class="checkbox-item"><input type="checkbox" value="${item.val}"> ${item.text}</label>`).join('')}
+            ${grp.items.length > 0 ? grp.items.map(textVal => `<label class="checkbox-item"><input type="checkbox" value="${textVal}"> ${textVal}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette disponible</span>'}
           </div>
         </div>
       `).join('');
@@ -309,7 +336,6 @@
           document.getElementById('display-id').innerText = `ID Ligne: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
 
-          // Si un service unique est assigné par profil, on le pré-remplit
           const selectService = document.getElementById('Service');
           if (selectService.options.length === 2) {
             selectService.selectedIndex = 1;
@@ -372,24 +398,19 @@
         }
       });
 
-      // Récupération dynamique des groupes de Checkboxes affichés
-      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Liste_Diffusion_DCP', 'Listes_Diffusion_Houdremont'];
+      // Gestion des listes de diffusion textuelles multiples (type ChoiceList dans Grist)
+      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Listes_Diffusion_Direction', 'Listes_Diffusion_Houdremont'];
       
       multiSelectGroups.forEach(groupId => {
         const container = document.getElementById(groupId);
         if (container) {
           const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
           if (checkedBoxes.length > 0) {
-            const idsList = ['L'];
+            const textesList = ['L'];
             checkedBoxes.forEach(box => {
-              const idVal = parseInt(box.value, 10);
-              if (!isNaN(idVal)) {
-                idsList.push(idVal);
-              }
+              textesList.push(box.value); // On envoie directement le texte complet de l'étiquette
             });
-            if (idsList.length > 1) {
-              fieldsToSave[groupId] = idsList;
-            }
+            fieldsToSave[groupId] = textesList;
           }
         }
       });

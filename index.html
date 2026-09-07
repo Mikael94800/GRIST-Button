@@ -31,6 +31,8 @@
 
     .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; }
     .btn-finish:hover { background-color: #389e0d; }
+
+    #debug-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; margin-bottom: 15px; border-radius: 6px; font-size: 12px; font-family: monospace; color: #d46b08; max-height: 100px; overflow-y: auto; display: none; }
   </style>
 </head>
 <body>
@@ -45,6 +47,8 @@
       <span class="form-title">Saisie d'un Nouveau Contact</span>
       <span id="display-id" class="badge-id">Création en cours...</span>
     </div>
+
+    <div id="debug-box"></div>
 
     <div class="grid">
       <!-- DATE DE SAISIE -->
@@ -218,16 +222,26 @@
 
     grist.ready({ requiredAccess: 'full' });
 
+    function logDebug(text) {
+      const box = document.getElementById('debug-box');
+      box.style.display = 'block';
+      box.innerHTML += text + '<br>';
+      console.log(text);
+    }
+
     Promise.all([
-      grist.user.getCurrentUser().catch(() => null),
-      grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
+      grist.user.getCurrentUser().catch(e => { logDebug("Erreur user: " + e); return null; }),
+      grist.docApi.fetchTable('ETIQUETTES').catch(e => { logDebug("Erreur fetchTable ETIQUETTES: " + e); return []; })
     ]).then(([user, etiquettesRecords]) => {
       if (user && user.name) {
         currentUserName = user.name;
       }
+      logDebug("Table ETIQUETTES récupérée. Type: " + typeof etiquettesRecords + ", Nb lignes: " + (Array.isArray(etiquettesRecords) ? etiquettesRecords.length : 'objet'));
+      logDebug("Données brutes reçues : " + JSON.stringify(etiquettesRecords).substring(0, 150) + "...");
+      
       construireInterface(etiquettesRecords);
     }).catch(err => {
-      console.error("Erreur de chargement :", err);
+      logDebug("Erreur critique Promise.all : " + err);
       construireInterface([]);
     });
 
@@ -249,7 +263,9 @@
         });
       }
 
-      return [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null" && v !== "NaN"))];
+      const resultat = [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null" && v !== "NaN"))];
+      logDebug(`Colonne [${nomColonne}] -> ${resultat.length} valeurs trouvées.`);
+      return resultat;
     }
 
     function construireInterface(etiquettesRecords) {
@@ -269,25 +285,25 @@
         <div class="field-group">
           <label>Listes Diffusion Intervenant</label>
           <div class="checkbox-group" data-grist-col="${colIntervenant}" id="box-intervenant">
-            ${itemsIntervenant.length > 0 ? itemsIntervenant.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+            ${itemsIntervenant.length > 0 ? itemsIntervenant.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Cinéma</label>
           <div class="checkbox-group" data-grist-col="${colCinema}" id="box-cinema">
-            ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+            ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Direction</label>
           <div class="checkbox-group" data-grist-col="${colDirection}" id="box-direction">
-            ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+            ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Houdremont</label>
           <div class="checkbox-group" data-grist-col="${colHoudremont}" id="box-houdremont">
-            ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+            ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
           </div>
         </div>
       `;
@@ -381,7 +397,6 @@
         }
       });
 
-      // Récupération sécurisée des listes de diffusion via l'attribut data-grist-col
       const checkboxGroups = document.querySelectorAll('.checkbox-group[data-grist-col]');
       checkboxGroups.forEach(container => {
         const gristColName = container.getAttribute('data-grist-col');

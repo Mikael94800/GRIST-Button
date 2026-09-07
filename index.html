@@ -23,7 +23,7 @@
     
     .checkboxes-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; background: #f9fafb; padding: 14px; border-radius: 8px; border: 1px solid #e5e7eb; }
     .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #fff; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
-    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #374151; cursor: pointer; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #374151; cursor: pointer; text-transform: none; font-weight: normal; }
     .checkbox-item input[type="checkbox"] { transform: scale(1.1); cursor: pointer; }
 
     .section-subtitle { font-size: 15px; font-weight: bold; color: #1e293b; margin: 18px 0 10px 0; border-left: 4px solid #1677ff; padding-left: 8px; }
@@ -156,38 +156,10 @@
       </div>
 
       <div class="field-group">
-        <label>Diffusion Direction</label>
-        <div class="checkbox-group" id="group-direction">
-          <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-          <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
-          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-          <label class="checkbox-item"><input type="checkbox" value="DAC_93"> DAC_93</label>
-        </div>
-      </div>
-
-      <div class="field-group">
-        <label>Diffusion Houdremont</label>
-        <div class="checkbox-group" id="group-houdremont">
-          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
-          <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
-          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-        </div>
-      </div>
-
-      <div class="field-group">
-        <label>Diffusion Intervenant</label>
-        <div class="checkbox-group" id="group-intervenant">
-          <label class="checkbox-item"><input type="checkbox" value="Cinéma"> Cinéma</label>
-          <label class="checkbox-item"><input type="checkbox" value="PEAC 26-27"> PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Patrimoine"> Patrimoine</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-          <label class="checkbox-item"><input type="checkbox" value="Direction"> Direction</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts plastiques"> Arts plastiques</label>
+        <label>Diffusion DCP</label>
+        <div class="checkbox-group" id="group-dcp">
+          <label class="checkbox-item"><input type="checkbox" value="DCP 1"> DCP 1</label>
+          <label class="checkbox-item"><input type="checkbox" value="DCP 2"> DCP 2</label>
         </div>
       </div>
     </div>
@@ -214,7 +186,6 @@
       remplirListesDeroulantes();
     });
 
-    // Date du jour par défaut (Format lisible pour l'affichage)
     const aujourdHui = new Date().toLocaleDateString('fr-FR');
     document.getElementById('input-date').value = aujourdHui;
 
@@ -279,20 +250,18 @@
       }
     }
 
-    function recupererCasesCochees(idConteneur) {
-      const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
-      const valeurs = Array.from(checkboxes).map(cb => cb.value);
-      // Grist gère souvent les choix multiples sous forme de listes Python/JSON ou de chaînes séparées par des virgules.
-      // On retourne un tableau de chaînes ou une chaîne selon la structure, ici un tableau ou une chaîne basique.
-      return valeurs.length > 0 ? valeurs : null;
-    }
-
     function convertirValeurReference(valeurBrute) {
       if (!valeurBrute) return null;
       if (!isNaN(valeurBrute) && valeurBrute.trim() !== "") {
         return Number(valeurBrute);
       }
       return valeurBrute;
+    }
+
+    function recupererCasesCochees(idConteneur) {
+      const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
+      const valeurs = Array.from(checkboxes).map(cb => cb.value);
+      return valeurs.length > 0 ? valeurs : null;
     }
 
     async function enregistrerNouveauContact() {
@@ -302,7 +271,6 @@
         return;
       }
 
-      // Conversion de la date au format timestamp UNIX (secondes) requis par Grist pour les colonnes de type Date, ou format YYYY-MM-DD
       const timestampActuel = Math.floor(Date.now() / 1000);
 
       const nouveauContact = {
@@ -323,11 +291,9 @@
         Pays: document.getElementById('input-pays').value || 'France',
         Commentaire_Description: document.getElementById('input-commentaire').value || null,
         
-        // Listes de diffusion injectées (correspondant aux noms exacts vus dans vos tables précédentes)
+        // Listes de diffusion avec cases à cocher
         'Listes Diffusion Cinéma': recupererCasesCochees('group-cinema'),
-        'Listes_Diffusion_Direction': recupererCasesCochees('group-direction'),
-        'Listes_Diffusion_Houdremont': recupererCasesCochees('group-houdremont'),
-        'Listes_Diffusion_Intervenant': recupererCasesCochees('group-intervenant')
+        'Listes Diffusion DCP': recupererCasesCochees('group-dcp')
       };
 
       try {
@@ -336,7 +302,6 @@
         reinitialiserFormulaire();
       } catch (err) {
         alert("Erreur lors de l'enregistrement : " + err.message);
-        console.error(err);
       }
     }
 

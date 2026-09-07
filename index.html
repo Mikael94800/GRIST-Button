@@ -143,7 +143,7 @@
       </div>
     </div>
 
-    <!-- Listes de Diffusion intégrées -->
+    <!-- Listes de Diffusion -->
     <div class="section-subtitle">Listes de Diffusion</div>
     <div class="checkboxes-container">
       <div class="field-group">
@@ -207,13 +207,26 @@
 
   <script>
     let allRecords = [];
+    let etiquettesRecords = [];
 
     grist.ready({ requiredAccess: 'full' });
 
+    // Charger les enregistrements de la table Contacts courante
     grist.onRecords(function(records) {
       allRecords = records;
       remplirListesDeroulantes();
     });
+
+    // Charger aussi la table ETIQUETTES pour faire le lien des IDs de référence
+    async function chargerEtiquettes() {
+      try {
+        const tableEtiquettes = grist.docApi.getTable('ETIQUETTES');
+        etiquettesRecords = await tableEtiquettes.fetch();
+      } catch (e) {
+        console.warn("Impossible de charger la table ETIQUETTES automatiquement :", e);
+      }
+    }
+    chargerEtiquettes();
 
     const aujourdHui = new Date().toLocaleDateString('fr-FR');
     document.getElementById('input-date').value = aujourdHui;
@@ -287,10 +300,27 @@
       return valeurBrute;
     }
 
-    function recupererCasesCochees(idConteneur) {
+    // Convertit les textes cochés en un tableau d'IDs Grist en se basant sur la table ETIQUETTES
+    function recupererIdsEtiquettes(idConteneur, nomColonneEtiquettes) {
       const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
-      const valeurs = Array.from(checkboxes).map(cb => cb.value);
-      return valeurs.length > 0 ? valeurs : null;
+      const textesCoches = Array.from(checkboxes).map(cb => cb.value);
+      
+      if (textesCoches.length === 0) return null;
+
+      // Si la table ETIQUETTES a pu être chargée, on extrait les identifiants (IDs) correspondants
+      if (etiquettesRecords && etiquettesRecords.length > 0) {
+        const ids = [];
+        textesCoches.forEach(texte => {
+          const ligneTrouvee = etiquettesRecords.find(row => row[nomColonneEtiquettes] === texte);
+          if (ligneTrouvee && ligneTrouvee.id) {
+            ids.push(ligneTrouvee.id);
+          }
+        });
+        return ids.length > 0 ? ids : null;
+      }
+
+      // Fallback si la table n'a pas pu être interrogée
+      return null;
     }
 
     async function enregistrerNouveauContact() {
@@ -320,11 +350,11 @@
         Pays: document.getElementById('input-pays').value || 'France',
         Commentaire_Description: document.getElementById('input-commentaire').value || null,
         
-        // Listes de diffusion avec les cases à cocher et noms corrects
-        'Listes Diffusion Cinéma': recupererCasesCochees('group-cinema'),
-        'Listes_Diffusion_Direction': recupererCasesCochees('group-direction'),
-        'Listes_Diffusion_Houdremont': recupererCasesCochees('group-houdremont'),
-        'Listes_Diffusion_Intervenant': recupererCasesCochees('group-intervenant')
+        // Association propre via les IDs de la table ETIQUETTES pour respecter la Référence multiple
+        'Listes_Diffusion_Cinéma': recupererIdsEtiquettes('group-cinema', 'Listes_Diffusion_Cinéma'),
+        'Listes_Diffusion_Direction': recupererIdsEtiquettes('group-direction', 'Listes_Diffusion_Direction'),
+        'Listes_Diffusion_Houdremont': recupererIdsEtiquettes('group-houdremont', 'Listes_Diffusion_Houdremont'),
+        'Listes_Diffusion_Intervenant': recupererIdsEtiquettes('group-intervenant', 'Listes_Diffusion_Intervenant')
       };
 
       try {

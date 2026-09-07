@@ -25,7 +25,6 @@
     input[type="text"], input[type="date"], input[type="email"], input[type="tel"], select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; width: 100%; }
     input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
     
-    /* Blocs de cases à cocher */
     .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
     .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; font-weight: normal; cursor: pointer; }
     .checkbox-item input { width: auto; cursor: pointer; }
@@ -145,9 +144,7 @@
       </div>
 
       <!-- CONTENEUR DYNAMIQUE DES LISTES DE DIFFUSION -->
-      <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <!-- Généré dynamiquement depuis la table ETIQUETTES -->
-      </div>
+      <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
 
       <!-- NOM STRUCTURE -->
       <div class="field-group full-width">
@@ -212,12 +209,11 @@
   <script>
     let currentRecordId = null;
     let currentUserProfile = "Direction"; 
-    let currentUserName = "Petitjean.Mikael"; // Valeur par défaut explicite pour s'assurer que ça s'écrit
+    let currentUserName = "Petitjean.Mikael"; 
     let globalEtiquettesRecords = [];
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Chargement initial sécurisé
     Promise.all([
       grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
@@ -230,14 +226,10 @@
           currentUserName = user.name;
         }
 
-        const matchUser = utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase());
+        const matchUser = Array.isArray(utilisateurs) ? utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase()) : null;
         if (matchUser) {
-          if (matchUser.Service) {
-            currentUserProfile = matchUser.Service; 
-          }
-          if (matchUser.Nom && matchUser.Prenom) {
-            currentUserName = `${matchUser.Nom}.${matchUser.Prenom}`;
-          }
+          if (matchUser.Service) currentUserProfile = matchUser.Service; 
+          if (matchUser.Nom && matchUser.Prenom) currentUserName = `${matchUser.Nom}.${matchUser.Prenom}`;
         }
         construireInterface(globalEtiquettesRecords);
       }).catch(() => {
@@ -249,16 +241,19 @@
       construireInterface([]);
     });
 
+    // Fonction universelle robuste gérant tous les formats de retour fetchTable de Grist
     function extraireValeursColonne(records, nomColonne) {
       if (!records) return [];
       let valeurs = [];
       
+      // Format 1 : Objet de colonnes { Col1: [...], Col2: [...] }
       if (!Array.isArray(records) && typeof records === 'object') {
         if (records[nomColonne] && Array.isArray(records[nomColonne])) {
           valeurs = records[nomColonne];
         }
       }
       
+      // Format 2 : Tableau de lignes [ {Col1: val}, ... ]
       if (Array.isArray(records)) {
         records.forEach(row => {
           if (row && row[nomColonne] !== undefined && row[nomColonne] !== null) {
@@ -338,7 +333,6 @@
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        // On associe l'identifiant utilisateur dès l'initialisation de la ligne pour éliminer le #CircularRef
         const initialData = { 'DATE_SAISIE_CONTACTS': today };
         if (currentUserName) {
           initialData['CREE_PAR'] = currentUserName;
@@ -394,7 +388,6 @@
 
       const fieldsToSave = {};
 
-      // S'assurer de persister l'utilisateur à la validation globale également
       if (currentUserName) {
         fieldsToSave['CREE_PAR'] = currentUserName;
       }

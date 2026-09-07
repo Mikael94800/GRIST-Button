@@ -212,20 +212,20 @@
   <script>
     let currentRecordId = null;
     let currentUserProfile = "Direction"; 
-    let currentUserName = "";
+    let currentUserName = "Petitjean.Mikael"; // Valeur par défaut explicite pour s'assurer que ça s'écrit
+    let globalEtiquettesRecords = [];
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Initialisation et chargement des données
+    // Chargement initial sécurisé
     Promise.all([
       grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
     ]).then(([utilisateurs, etiquettesRecords]) => {
+      globalEtiquettesRecords = etiquettesRecords;
       
       grist.user.getCurrentUser().then(user => {
         const currentUserEmail = user ? user.email : "";
-        
-        // Détermination du nom d'utilisateur pour la colonne CREE_PAR (ex: "Petitjean.Mikael")
         if (user && user.name) {
           currentUserName = user.name;
         }
@@ -235,14 +235,13 @@
           if (matchUser.Service) {
             currentUserProfile = matchUser.Service; 
           }
-          // Si une colonne Nom/Prénom existe dans la table UTILISATEURS, on peut aussi l'utiliser
           if (matchUser.Nom && matchUser.Prenom) {
             currentUserName = `${matchUser.Nom}.${matchUser.Prenom}`;
           }
         }
-        construireInterface(etiquettesRecords);
+        construireInterface(globalEtiquettesRecords);
       }).catch(() => {
-        construireInterface(etiquettesRecords);
+        construireInterface(globalEtiquettesRecords);
       });
 
     }).catch(err => {
@@ -250,29 +249,28 @@
       construireInterface([]);
     });
 
-    function extraireValeursColonne(etiquettesRecords, nomColonne) {
-      if (!etiquettesRecords) return [];
+    function extraireValeursColonne(records, nomColonne) {
+      if (!records) return [];
       let valeurs = [];
       
-      // Gestion robuste selon le format retourné par fetchTable (Tableau d'objets ou Objet de colonnes)
-      if (Array.isArray(etiquettesRecords)) {
-        etiquettesRecords.forEach(row => {
-          let val = row[nomColonne];
-          if (val !== undefined && val !== null && val !== "") {
-            valeurs.push(val);
-          }
-        });
-      } else if (typeof etiquettesRecords === 'object') {
-        let colData = etiquettesRecords[nomColonne];
-        if (Array.isArray(colData)) {
-          valeurs = colData.filter(v => v !== null && v !== "");
+      if (!Array.isArray(records) && typeof records === 'object') {
+        if (records[nomColonne] && Array.isArray(records[nomColonne])) {
+          valeurs = records[nomColonne];
         }
       }
-      return [...new Set(valeurs)]; 
+      
+      if (Array.isArray(records)) {
+        records.forEach(row => {
+          if (row && row[nomColonne] !== undefined && row[nomColonne] !== null) {
+            valeurs.push(row[nomColonne]);
+          }
+        });
+      }
+
+      return [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null"))];
     }
 
     function construireInterface(etiquettesRecords) {
-      // 1. Gestion du sélecteur "Service (Origine)"
       const selectService = document.getElementById('Service');
       let servicesDispos = ["Arts visuels", "Cinéma", "EAC", "Houdremont", "Patrimoine", "Direction"];
 
@@ -289,7 +287,6 @@
         selectService.value = servicesDispos[0];
       }
 
-      // 2. Récupération des libellés depuis la table ETIQUETTES
       const itemsCinema = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Cinema');
       const itemsDirection = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Direction');
       const itemsHoudremont = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Houdremont');
@@ -341,7 +338,7 @@
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        // On injecte directement CREE_PAR pour éviter l'erreur de référence circulaire (#CircularRef)
+        // On associe l'identifiant utilisateur dès l'initialisation de la ligne pour éliminer le #CircularRef
         const initialData = { 'DATE_SAISIE_CONTACTS': today };
         if (currentUserName) {
           initialData['CREE_PAR'] = currentUserName;
@@ -397,6 +394,11 @@
 
       const fieldsToSave = {};
 
+      // S'assurer de persister l'utilisateur à la validation globale également
+      if (currentUserName) {
+        fieldsToSave['CREE_PAR'] = currentUserName;
+      }
+
       const inputs = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container textarea');
       inputs.forEach(input => {
         if (input.id && input.value !== '') {
@@ -419,7 +421,6 @@
         }
       });
 
-      // Gestion des listes de diffusion textuelles multiples (ChoiceList)
       const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Listes_Diffusion_Direction', 'Listes_Diffusion_Houdremont'];
       
       multiSelectGroups.forEach(groupId => {

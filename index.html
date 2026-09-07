@@ -2,439 +2,338 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Saisie Nouveau Contact</title>
+  <title>Saisie d'un Nouveau Contact</title>
   <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { margin: 0; padding: 16px; background-color: transparent; }
-    #action-container { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
-    .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); }
-    .btn-create:hover { background-color: #0958d9; }
+    body { margin: 0; padding: 12px; background-color: #f8fafc; font-size: 15.5px; }
     
-    .alert-success { display: none; background-color: #f6ffed; border: 1px solid #b7eb8f; color: #274fee; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; width: 100%; }
+    .form-card { background: #ffffff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; max-width: 1000px; margin: 0 auto; }
+    .card-title { font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; }
+    .id-badge { background: #e6f4ff; color: #0958d9; font-size: 14px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+
+    .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
+    .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+    .form-row-1 { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 13px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
     
-    #form-container { display: none; background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
-    .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1677ff; }
-    .form-title { font-size: 18px; font-weight: 700; color: #1f2937; }
-    .badge-id { background: #e6f4ff; color: #0958d9; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
-
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .full-width { grid-column: span 2; }
-    .field-group { display: flex; flex-direction: column; gap: 4px; }
-    label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; }
-    input[type="text"], input[type="date"], input[type="email"], input[type="tel"], select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; width: 100%; }
-    input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
+    input[type="text"], select, textarea { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; background-color: #fff; width: 100%; }
+    input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
     
-    .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
-    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; cursor: pointer; }
-    .checkbox-item input { width: auto; cursor: pointer; }
+    .checkboxes-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; background: #f9fafb; padding: 14px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #fff; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #374151; cursor: pointer; }
+    .checkbox-item input[type="checkbox"] { transform: scale(1.1); cursor: pointer; }
 
-    .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; }
-    .btn-finish:hover { background-color: #389e0d; }
+    .section-subtitle { font-size: 15px; font-weight: bold; color: #1e293b; margin: 18px 0 10px 0; border-left: 4px solid #1677ff; padding-left: 8px; }
 
-    #debug-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 10px; margin-bottom: 15px; border-radius: 6px; font-size: 12px; font-family: monospace; color: #d46b08; max-height: 100px; overflow-y: auto; display: none; }
+    .actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+    .btn-submit { background-color: #52c41a; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+    .btn-submit:hover { background-color: #389e0d; }
+
+    .error-input { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+    .error-msg { font-size: 12px; color: #ef4444; margin-top: 3px; display: none; }
   </style>
 </head>
 <body>
 
-  <div id="action-container">
-    <div id="success-banner" class="alert-success">✓ Le contact a bien été enregistré dans le tableur !</div>
-    <button class="btn-create" onclick="demarrerNouveauContact()">+ Créer un nouveau contact</button>
-  </div>
-
-  <div id="form-container">
-    <div class="form-header">
-      <span class="form-title">Saisie d'un Nouveau Contact</span>
-      <span id="display-id" class="badge-id">Création en cours...</span>
+  <div class="form-card">
+    <div class="card-title">
+      <span>Saisie d'un Nouveau Contact</span>
+      <span id="ligne-id" class="id-badge">Nouvelle fiche</span>
     </div>
 
-    <div id="debug-box"></div>
-
-    <div class="grid">
-      <!-- DATE DE SAISIE -->
+    <div class="form-row">
       <div class="field-group">
         <label>Date de saisie</label>
-        <input type="date" id="DATE_SAISIE_CONTACTS">
+        <input type="text" id="input-date" readonly style="background-color: #f3f4f6;">
       </div>
-
-      <!-- SERVICE / ORIGINE -->
       <div class="field-group">
         <label>Service (Origine)</label>
-        <select id="Service">
+        <select id="input-service">
           <option value="">-- Sélectionner --</option>
-          <option value="Arts visuels">Arts visuels</option>
-          <option value="Cinéma">Cinéma</option>
-          <option value="EAC">EAC</option>
-          <option value="Houdremont">Houdremont</option>
-          <option value="Patrimoine">Patrimoine</option>
-          <option value="Direction">Direction</option>
         </select>
       </div>
+    </div>
 
-      <!-- STATUT JURIDIQUE -->
+    <div class="form-row">
       <div class="field-group">
         <label>Statut Juridique</label>
-        <select id="STATUT_JURIDIQUE">
+        <select id="input-statut">
           <option value="">-- Sélectionner --</option>
-          <option value="1">Collectivités territoriales</option>
-          <option value="2">Association</option>
-          <option value="3">Bailleurs sociaux</option>
-          <option value="4">Entreprise</option>
-          <option value="5">Artiste</option>
-          <option value="6">Etablissement public</option>
-          <option value="7">Administration d'Etat</option>
-          <option value="8">Free-lance / professionnel indépendant</option>
-          <option value="9">Particulier</option>
-          <option value="10">Autre</option>
         </select>
       </div>
-
-      <!-- TYPE DE STRUCTURE / CONTACT -->
       <div class="field-group">
-        <label>Type de Structure / Contact</label>
-        <select id="TYPE_DE_STRUCTURE_CONTACT">
+        <label>Type de structure / Contact</label>
+        <select id="input-type-structure">
           <option value="">-- Sélectionner --</option>
-          <option value="1">Société de production</option>
-          <option value="2">Usager / famille</option>
-          <option value="3">Compagnie</option>
-          <option value="4">Musée/services d'archives</option>
-          <option value="5">Société de distribution</option>
-          <option value="6">Artiste</option>
-          <option value="7">Réseaux professionnels</option>
-          <option value="8">Festival</option>
-          <option value="9">Média</option>
-          <option value="10">École maternelle</option>
-          <option value="11">École élémentaire</option>
-          <option value="12">Collège</option>
-          <option value="13">Lycée</option>
-          <option value="14">Rectorat / Circonscription</option>
-          <option value="15">Handicap & accessibilité</option>
-          <option value="16">Médiathèque</option>
-          <option value="17">Etablissement de santé</option>
-          <option value="18">Galerie / Lieu d'exposition</option>
-          <option value="19">Centres sociaux / MPT</option>
-          <option value="20">Centres de loisirs</option>
-          <option value="21">Antenne Jeunesse</option>
-          <option value="22">Club sportif</option>
-          <option value="23">Crèches, PMI, assistante</option>
-          <option value="24">Salle de cinéma</option>
-          <option value="25">Services pénitentiaires et judiciaires</option>
-          <option value="26">Mission locale, France Travail</option>
-          <option value="27">Soutien scolaire</option>
-          <option value="28">Ayant droits d'artiste</option>
-          <option value="29">Autres</option>
-          <option value="30">Association culturelle</option>
-          <option value="31">Lieu de diffusion spectacle vivant</option>
-          <option value="32">Conservatoire, école d'art</option>
         </select>
       </div>
+    </div>
 
-      <!-- DOMAINE D'ACTIVITES -->
-      <div class="field-group full-width">
+    <div class="form-row-1">
+      <div class="field-group">
         <label>Domaine d'activités</label>
-        <select id="DOMAINE_D_ACTIVITES">
+        <select id="input-domaine">
           <option value="">-- Sélectionner --</option>
-          <option value="1">Cinéma</option>
-          <option value="2">Patrimoine</option>
-          <option value="3">Politique culturelle</option>
-          <option value="4">Spectacle vivant</option>
-          <option value="5">Arts visuels</option>
-          <option value="6">Insertion</option>
-          <option value="7">Champs social</option>
-          <option value="8">Champs médico-social, médical, santé</option>
-          <option value="9">Sport</option>
-          <option value="10">Petite enfance</option>
-          <option value="11">Education et périscolaire</option>
-          <option value="12">Enseignement supérieur</option>
-          <option value="13">Enseignement artistique</option>
-          <option value="14">Livre et lecture publique</option>
-          <option value="15">Environnement et transition écologique</option>
-          <option value="16">Autre</option>
         </select>
       </div>
+    </div>
 
-      <!-- CONTENEUR DES 4 LISTES DE DIFFUSION -->
-      <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
-
-      <!-- NOM STRUCTURE -->
-      <div class="field-group full-width">
-        <label>Nom Structure</label>
-        <input type="text" id="NOM_Structure" placeholder="Nom de la structure">
+    <div class="form-row-1">
+      <div class="field-group">
+        <label>Nom structure</label>
+        <input type="text" id="input-nom-structure" placeholder="Nom de la structure">
       </div>
+    </div>
 
-      <!-- NOM & PRENOM -->
+    <div class="form-row">
       <div class="field-group">
         <label>Nom</label>
-        <input type="text" id="NOM" placeholder="Nom de famille">
+        <input type="text" id="input-nom" placeholder="Nom de famille">
       </div>
       <div class="field-group">
         <label>Prénom</label>
-        <input type="text" id="PRENOM" placeholder="Prénom">
-      </div>
-
-      <!-- EMAIL & TELEPHONE -->
-      <div class="field-group">
-        <label>Email Principal</label>
-        <input type="email" id="EMAIL_PRINCIPAL" placeholder="exemple@domaine.fr">
-      </div>
-      <div class="field-group">
-        <label>Téléphone Principal</label>
-        <input type="tel" id="Telephone_Principal" placeholder="01 23 45 67 89">
-      </div>
-
-      <!-- FONCTION -->
-      <div class="field-group full-width">
-        <label>Fonction / Profession</label>
-        <input type="text" id="Fonction_Profession" placeholder="ex: Responsable...">
-      </div>
-
-      <!-- ADRESSE, CODE POSTAL, VILLE, PAYS -->
-      <div class="field-group full-width">
-        <label>Adresse</label>
-        <input type="text" id="Adresse" placeholder="Voie, numéro...">
-      </div>
-      <div class="field-group">
-        <label>Code Postal</label>
-        <input type="text" id="Code_Postal" placeholder="93300" oninput="traiterCodePostal(this.value)">
-      </div>
-      <div class="field-group">
-        <label>Ville</label>
-        <input type="text" id="Ville" placeholder="La Courneuve">
-      </div>
-      <div class="field-group full-width">
-        <label>Pays</label>
-        <input type="text" id="Pays" placeholder="France">
-      </div>
-
-      <!-- COMMENTAIRE -->
-      <div class="field-group full-width">
-        <label>Commentaire / Description</label>
-        <textarea id="Commentaire_Description" rows="2"></textarea>
+        <input type="text" id="input-prenom" placeholder="Prénom">
       </div>
     </div>
 
-    <button class="btn-finish" onclick="validerEtSauvegarderTout()">✓ Valider et terminer la fiche</button>
+    <div class="form-row">
+      <div class="field-group">
+        <label>Email principal</label>
+        <input type="text" id="input-email" placeholder="exemple@domaine.fr" oninput="validerEmail(this)">
+        <div class="error-msg" id="err-email">Format d'e-mail invalide</div>
+      </div>
+      <div class="field-group">
+        <label>Téléphone principal</label>
+        <input type="text" id="input-tel" placeholder="01 23 45 67 89">
+      </div>
+    </div>
+
+    <div class="form-row-1">
+      <div class="field-group">
+        <label>Fonction / Profession</label>
+        <input type="text" id="input-fonction" placeholder="ex: Responsable...">
+      </div>
+    </div>
+
+    <div class="form-row-1">
+      <div class="field-group">
+        <label>Adresse</label>
+        <input type="text" id="input-adresse" placeholder="Voie, numéro...">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field-group">
+        <label>Code Postal</label>
+        <input type="text" id="input-cp" placeholder="93300">
+      </div>
+      <div class="field-group">
+        <label>Ville</label>
+        <input type="text" id="input-ville" placeholder="La Courneuve">
+      </div>
+    </div>
+
+    <div class="form-row-1">
+      <div class="field-group">
+        <label>Pays</label>
+        <input type="text" id="input-pays" value="France">
+      </div>
+    </div>
+
+    <div class="section-subtitle">Listes de Diffusion</div>
+    <div class="checkboxes-container">
+      <div class="field-group">
+        <label>Diffusion Cinéma</label>
+        <div class="checkbox-group" id="group-cinema">
+          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Diffusion Direction</label>
+        <div class="checkbox-group" id="group-direction">
+          <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
+          <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
+          <label class="checkbox-item"><input type="checkbox" value="DAC_93"> DAC_93</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Diffusion Houdremont</label>
+        <div class="checkbox-group" id="group-houdremont">
+          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
+          <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Diffusion Intervenant</label>
+        <div class="checkbox-group" id="group-intervenant">
+          <label class="checkbox-item"><input type="checkbox" value="Cinéma"> Cinéma</label>
+          <label class="checkbox-item"><input type="checkbox" value="PEAC 26-27"> PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Patrimoine"> Patrimoine</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
+          <label class="checkbox-item"><input type="checkbox" value="Direction"> Direction</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts plastiques"> Arts plastiques</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row-1">
+      <div class="field-group">
+        <label>Commentaire / Description</label>
+        <textarea id="input-commentaire" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-submit" onclick="enregistrerNouveauContact()">✓ Valider et terminer la fiche</button>
+    </div>
   </div>
 
   <script>
-    let currentRecordId = null;
-    let currentUserName = "Petitjean.Mikael"; 
+    let allRecords = [];
 
     grist.ready({ requiredAccess: 'full' });
 
-    function logDebug(text) {
-      const box = document.getElementById('debug-box');
-      box.style.display = 'block';
-      box.innerHTML += text + '<br>';
-      console.log(text);
-    }
-
-    Promise.all([
-      grist.user.getCurrentUser().catch(e => { logDebug("Erreur user: " + e); return null; }),
-      grist.docApi.fetchTable('ETIQUETTES').catch(e => { logDebug("Erreur fetchTable ETIQUETTES: " + e); return []; })
-    ]).then(([user, etiquettesRecords]) => {
-      if (user && user.name) {
-        currentUserName = user.name;
-      }
-      logDebug("Table ETIQUETTES récupérée. Type: " + typeof etiquettesRecords + ", Nb lignes: " + (Array.isArray(etiquettesRecords) ? etiquettesRecords.length : 'objet'));
-      logDebug("Données brutes reçues : " + JSON.stringify(etiquettesRecords).substring(0, 150) + "...");
-      
-      construireInterface(etiquettesRecords);
-    }).catch(err => {
-      logDebug("Erreur critique Promise.all : " + err);
-      construireInterface([]);
+    grist.onRecords(function(records) {
+      allRecords = records;
+      remplirListesDeroulantes();
     });
 
-    function extraireValeursColonne(records, nomColonne) {
-      if (!records) return [];
-      let valeurs = [];
-      
-      if (!Array.isArray(records) && typeof records === 'object') {
-        if (records[nomColonne] && Array.isArray(records[nomColonne])) {
-          valeurs = records[nomColonne];
+    // Date du jour par défaut
+    const aujourdHui = new Date().toISOString().split('T')[0].split('-').reverse().join('/');
+    document.getElementById('input-date').value = aujourdHui;
+
+    function normaliserChaine(valeur) {
+      if (!valeur) return "";
+      if (typeof valeur === "string") return valeur;
+      if (Array.isArray(valeur)) {
+        return valeur.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(", ");
+      }
+      return String(valeur);
+    }
+
+    function extraireValeursUniques(cle) {
+      const valeursSet = new Set();
+      allRecords.forEach(r => {
+        const val = r[cle];
+        if (val !== undefined && val !== null && val !== "") {
+          const texte = normaliserChaine(val);
+          texte.split(/[,;]/).forEach(v => {
+            const clean = v.trim();
+            if (clean) valeursSet.add(clean);
+          });
         }
-      }
+      });
+      return Array.from(valeursSet).sort();
+    }
+
+    function remplirSelect(idElement, valeurs) {
+      const select = document.getElementById(idElement);
+      const valActuelle = select.value;
+      select.innerHTML = '<option value="">-- Sélectionner --</option>' + valeurs.map(v => `<option value="${v}">${v}</option>`).join('');
+      select.value = valActuelle;
+    }
+
+    function remplirListesDeroulantes() {
+      remplirSelect('input-service', extraireValeursUniques('Service'));
+      remplirSelect('input-statut', extraireValeursUniques('STATUT_JURIDIQUE'));
       
-      if (Array.isArray(records)) {
-        records.forEach(row => {
-          if (row && row[nomColonne] !== undefined && row[nomColonne] !== null) {
-            valeurs.push(row[nomColonne]);
-          }
-        });
-      }
-
-      const resultat = [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null" && v !== "NaN"))];
-      logDebug(`Colonne [${nomColonne}] -> ${resultat.length} valeurs trouvées.`);
-      return resultat;
+      const typesStruct = extraireValeursUniques('TYPE_DE_STRUCTURE_CONTACT').length > 0 ? 
+                          extraireValeursUniques('TYPE_DE_STRUCTURE_CONTACT') : 
+                          extraireValeursUniques('TYPE_DE_STRUCTURE');
+      remplirSelect('input-type-structure', typesStruct);
+      remplirSelect('input-domaine', extraireValeursUniques('DOMAINE_D_ACTIVITES'));
     }
 
-    function construireInterface(etiquettesRecords) {
-      const colIntervenant = 'Listes_Diffusion_ Intervenant';
-      const colCinema = 'Listes Diffusion Cinéma';
-      const colDirection = 'Listes_Diffusion_Direction';
-      const colHoudremont = 'Listes_Diffusion_Houdremont';
-
-      const itemsIntervenant = extraireValeursColonne(etiquettesRecords, colIntervenant);
-      const itemsCinema = extraireValeursColonne(etiquettesRecords, colCinema);
-      const itemsDirection = extraireValeursColonne(etiquettesRecords, colDirection);
-      const itemsHoudremont = extraireValeursColonne(etiquettesRecords, colHoudremont);
-
-      const wrapper = document.getElementById('diffusion-containers-wrapper');
-      
-      wrapper.innerHTML = `
-        <div class="field-group">
-          <label>Listes Diffusion Intervenant</label>
-          <div class="checkbox-group" data-grist-col="${colIntervenant}" id="box-intervenant">
-            ${itemsIntervenant.length > 0 ? itemsIntervenant.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
-          </div>
-        </div>
-        <div class="field-group">
-          <label>Listes Diffusion Cinéma</label>
-          <div class="checkbox-group" data-grist-col="${colCinema}" id="box-cinema">
-            ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
-          </div>
-        </div>
-        <div class="field-group">
-          <label>Listes Diffusion Direction</label>
-          <div class="checkbox-group" data-grist-col="${colDirection}" id="box-direction">
-            ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
-          </div>
-        </div>
-        <div class="field-group">
-          <label>Listes Diffusion Houdremont</label>
-          <div class="checkbox-group" data-grist-col="${colHoudremont}" id="box-houdremont">
-            ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#ef4444; padding:4px;">Aucune étiquette trouvée</span>'}
-          </div>
-        </div>
-      `;
+    function estEmailValide(email) {
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
     }
 
-    function parseGristId(response) {
-      if (!response) return null;
-      if (typeof response === 'number') return response;
-      if (Array.isArray(response)) return parseGristId(response[0]);
-      if (typeof response === 'object') {
-        return response.id || response.rowId || response.retValues?.[0] || Object.values(response)[0];
-      }
-      return null;
-    }
-
-    async function demarrerNouveauContact() {
-      document.getElementById('success-banner').style.display = 'none';
-
-      try {
-        const today = new Date().toISOString().split('T')[0];
-
-        const initialData = { 
-          'DATE_SAISIE_CONTACTS': today,
-          'CREE_PAR': currentUserName 
-        };
-
-        const result = await grist.docApi.applyUserActions([
-          ['AddRecord', 'CONTACTS', null, initialData]
-        ]);
-
-        currentRecordId = parseGristId(result);
-
-        if (currentRecordId) {
-          document.getElementById('display-id').innerText = `ID Ligne: ${currentRecordId}`;
-          document.getElementById('DATE_SAISIE_CONTACTS').value = today;
-
-          document.getElementById('action-container').style.display = 'none';
-          document.getElementById('form-container').style.display = 'block';
-        } else {
-          alert("Erreur: L'ID généré n'a pas pu être extrait.");
-        }
-      } catch (err) {
-        console.error('Erreur lors de la création :', err);
-        alert("Erreur réseau/Grist : " + err.message);
+    function validerEmail(input) {
+      const val = input.value.trim();
+      const errDiv = document.getElementById('err-email');
+      if (val !== "" && !estEmailValide(val)) {
+        input.classList.add('error-input');
+        errDiv.style.display = 'block';
+        return false;
+      } else {
+        input.classList.remove('error-input');
+        errDiv.style.display = 'none';
+        return true;
       }
     }
 
-    async function traiterCodePostal(cp) {
-      if (cp.trim().length === 5 && !isNaN(cp)) {
-        try {
-          const response = await fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json`);
-          const data = await response.json();
-
-          if (data && data.length > 0) {
-            document.getElementById('Ville').value = data[0].nom;
-            document.getElementById('Pays').value = 'France';
-          }
-        } catch (e) {
-          console.error("Erreur de recherche de commune :", e);
-        }
-      }
+    function recupererCasesCochees(idConteneur) {
+      const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
+      return Array.from(checkboxes).map(cb => cb.value).join(', ');
     }
 
-    async function validerEtSauvegarderTout() {
-      if (!currentRecordId) {
-        alert("Erreur : Aucun ID de fiche n'est actif.");
+    async function enregistrerNouveauContact() {
+      const emailInput = document.getElementById('input-email');
+      if (emailInput.value.trim() !== "" && !estEmailValide(emailInput.value.trim())) {
+        alert("Veuillez corriger l'adresse e-mail avant de valider.");
         return;
       }
 
-      const fieldsToSave = {
-        'CREE_PAR': currentUserName
+      const nouveauContact = {
+        DATE_ENTREE_CONTACTS: new Date().toISOString().split('T')[0],
+        Service: document.getElementById('input-service').value || null,
+        STATUT_JURIDIQUE: document.getElementById('input-statut').value || null,
+        TYPE_DE_STRUCTURE_CONTACT: document.getElementById('input-type-structure').value || null,
+        DOMAINE_D_ACTIVITES: document.getElementById('input-domaine').value || null,
+        NOM_Structure: document.getElementById('input-nom-structure').value,
+        NOM: document.getElementById('input-nom').value,
+        PRENOM: document.getElementById('input-prenom').value,
+        EMAIL_PRINCIPAL: emailInput.value.trim(),
+        Telephone_Principal: document.getElementById('input-tel').value,
+        Fonction_Profession: document.getElementById('input-fonction').value,
+        Adresse: document.getElementById('input-adresse').value,
+        Code_Postal: document.getElementById('input-cp').value,
+        Ville: document.getElementById('input-ville').value,
+        Pays: document.getElementById('input-pays').value,
+        Commentaire_Description: document.getElementById('input-commentaire').value,
+        
+        // Listes de diffusion injectées
+        'Listes Diffusion Cinéma': recupererCasesCochees('group-cinema'),
+        'Listes_Diffusion_Direction': recupererCasesCochees('group-direction'),
+        'Listes_Diffusion_Houdremont': recupererCasesCochees('group-houdremont'),
+        'Listes_Diffusion_Intervenant': recupererCasesCochees('group-intervenant')
       };
 
-      const inputs = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container textarea');
-      inputs.forEach(input => {
-        if (input.id && input.value !== '') {
-          fieldsToSave[input.id] = input.value;
-        }
-      });
-
-      const refFields = ['STATUT_JURIDIQUE', 'TYPE_DE_STRUCTURE_CONTACT', 'DOMAINE_D_ACTIVITES'];
-      const selects = document.querySelectorAll('#form-container select');
-      selects.forEach(select => {
-        if (select.id && select.value !== '') {
-          const valNum = parseInt(select.value, 10);
-          if (refFields.includes(select.id) && !isNaN(valNum)) {
-            fieldsToSave[select.id] = ['L', valNum];
-          } else {
-            fieldsToSave[select.id] = select.value;
-          }
-        }
-      });
-
-      const checkboxGroups = document.querySelectorAll('.checkbox-group[data-grist-col]');
-      checkboxGroups.forEach(container => {
-        const gristColName = container.getAttribute('data-grist-col');
-        const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
-        if (checkedBoxes.length > 0) {
-          const textesList = ['L'];
-          checkedBoxes.forEach(box => {
-            textesList.push(box.value);
-          });
-          fieldsToSave[gristColName] = textesList;
-        }
-      });
-
       try {
-        await grist.docApi.applyUserActions([
-          ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
-        ]);
-
-        inputs.forEach(input => input.value = '');
-        selects.forEach(select => select.selectedIndex = 0);
-        document.querySelectorAll('#form-container input[type="checkbox"]').forEach(box => box.checked = false);
-        
-        currentRecordId = null;
-
-        document.getElementById('form-container').style.display = 'none';
-        document.getElementById('action-container').style.display = 'flex';
-
-        const banner = document.getElementById('success-banner');
-        banner.style.display = 'block';
-
-        setTimeout(() => {
-          banner.style.display = 'none';
-        }, 5000);
-
+        await grist.selectedTable.create([nouveauContact]);
+        alert("Nouveau contact enregistré avec succès !");
+        reinitialiserFormulaire();
       } catch (err) {
-        console.error('Erreur lors de la sauvegarde :', err);
-        alert("Erreur lors de la sauvegarde : " + err.message);
+        alert("Erreur lors de l'enregistrement : " + err.message);
       }
+    }
+
+    function reinitialiserFormulaire() {
+      document.querySelectorAll('input[type="text"]').forEach(input => {
+        if (input.id !== 'input-date' && input.id !== 'input-pays') input.value = '';
+      });
+      document.querySelectorAll('select').forEach(sel => sel.value = '');
+      document.querySelectorAll('textarea').forEach(ta => ta.value = '');
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.getElementById('input-pays').value = 'France';
     }
   </script>
 </body>

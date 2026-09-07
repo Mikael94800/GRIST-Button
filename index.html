@@ -13,7 +13,6 @@
     .id-badge { background: #e6f4ff; color: #0958d9; font-size: 14px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
 
     .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
-    .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
     .form-row-1 { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
 
     .field-group { display: flex; flex-direction: column; gap: 5px; }
@@ -215,8 +214,8 @@
       remplirListesDeroulantes();
     });
 
-    // Date du jour par défaut
-    const aujourdHui = new Date().toISOString().split('T')[0].split('-').reverse().join('/');
+    // Date du jour par défaut (Format lisible pour l'affichage)
+    const aujourdHui = new Date().toLocaleDateString('fr-FR');
     document.getElementById('input-date').value = aujourdHui;
 
     function normaliserChaine(valeur) {
@@ -282,7 +281,18 @@
 
     function recupererCasesCochees(idConteneur) {
       const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
-      return Array.from(checkboxes).map(cb => cb.value).join(', ');
+      const valeurs = Array.from(checkboxes).map(cb => cb.value);
+      // Grist gère souvent les choix multiples sous forme de listes Python/JSON ou de chaînes séparées par des virgules.
+      // On retourne un tableau de chaînes ou une chaîne selon la structure, ici un tableau ou une chaîne basique.
+      return valeurs.length > 0 ? valeurs : null;
+    }
+
+    function convertirValeurReference(valeurBrute) {
+      if (!valeurBrute) return null;
+      if (!isNaN(valeurBrute) && valeurBrute.trim() !== "") {
+        return Number(valeurBrute);
+      }
+      return valeurBrute;
     }
 
     async function enregistrerNouveauContact() {
@@ -292,25 +302,28 @@
         return;
       }
 
+      // Conversion de la date au format timestamp UNIX (secondes) requis par Grist pour les colonnes de type Date, ou format YYYY-MM-DD
+      const timestampActuel = Math.floor(Date.now() / 1000);
+
       const nouveauContact = {
-        DATE_ENTREE_CONTACTS: new Date().toISOString().split('T')[0],
-        Service: document.getElementById('input-service').value || null,
-        STATUT_JURIDIQUE: document.getElementById('input-statut').value || null,
-        TYPE_DE_STRUCTURE_CONTACT: document.getElementById('input-type-structure').value || null,
-        DOMAINE_D_ACTIVITES: document.getElementById('input-domaine').value || null,
-        NOM_Structure: document.getElementById('input-nom-structure').value,
-        NOM: document.getElementById('input-nom').value,
-        PRENOM: document.getElementById('input-prenom').value,
-        EMAIL_PRINCIPAL: emailInput.value.trim(),
-        Telephone_Principal: document.getElementById('input-tel').value,
-        Fonction_Profession: document.getElementById('input-fonction').value,
-        Adresse: document.getElementById('input-adresse').value,
-        Code_Postal: document.getElementById('input-cp').value,
-        Ville: document.getElementById('input-ville').value,
-        Pays: document.getElementById('input-pays').value,
-        Commentaire_Description: document.getElementById('input-commentaire').value,
+        DATE_ENTREE_CONTACTS: timestampActuel,
+        Service: convertirValeurReference(document.getElementById('input-service').value),
+        STATUT_JURIDIQUE: convertirValeurReference(document.getElementById('input-statut').value),
+        TYPE_DE_STRUCTURE_CONTACT: convertirValeurReference(document.getElementById('input-type-structure').value),
+        DOMAINE_D_ACTIVITES: convertirValeurReference(document.getElementById('input-domaine').value),
+        NOM_Structure: document.getElementById('input-nom-structure').value || null,
+        NOM: document.getElementById('input-nom').value || null,
+        PRENOM: document.getElementById('input-prenom').value || null,
+        EMAIL_PRINCIPAL: emailInput.value.trim() || null,
+        Telephone_Principal: document.getElementById('input-tel').value || null,
+        Fonction_Profession: document.getElementById('input-fonction').value || null,
+        Adresse: document.getElementById('input-adresse').value || null,
+        Code_Postal: document.getElementById('input-cp').value || null,
+        Ville: document.getElementById('input-ville').value || null,
+        Pays: document.getElementById('input-pays').value || 'France',
+        Commentaire_Description: document.getElementById('input-commentaire').value || null,
         
-        // Listes de diffusion injectées
+        // Listes de diffusion injectées (correspondant aux noms exacts vus dans vos tables précédentes)
         'Listes Diffusion Cinéma': recupererCasesCochees('group-cinema'),
         'Listes_Diffusion_Direction': recupererCasesCochees('group-direction'),
         'Listes_Diffusion_Houdremont': recupererCasesCochees('group-houdremont'),
@@ -323,6 +336,7 @@
         reinitialiserFormulaire();
       } catch (err) {
         alert("Erreur lors de l'enregistrement : " + err.message);
+        console.error(err);
       }
     }
 

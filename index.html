@@ -253,7 +253,6 @@
     }
 
     function construireInterface(etiquettesRecords) {
-      // Correspondance exacte avec vos noms de colonnes dans la table ETIQUETTES
       const colIntervenant = 'Listes_Diffusion_ Intervenant';
       const colCinema = 'Listes Diffusion Cinéma';
       const colDirection = 'Listes_Diffusion_Direction';
@@ -269,25 +268,25 @@
       wrapper.innerHTML = `
         <div class="field-group">
           <label>Listes Diffusion Intervenant</label>
-          <div class="checkbox-group" id="${colIntervenant}">
+          <div class="checkbox-group" data-grist-col="${colIntervenant}" id="box-intervenant">
             ${itemsIntervenant.length > 0 ? itemsIntervenant.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Cinéma</label>
-          <div class="checkbox-group" id="${colCinema}">
+          <div class="checkbox-group" data-grist-col="${colCinema}" id="box-cinema">
             ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Direction</label>
-          <div class="checkbox-group" id="${colDirection}">
+          <div class="checkbox-group" data-grist-col="${colDirection}" id="box-direction">
             ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
         <div class="field-group">
           <label>Listes Diffusion Houdremont</label>
-          <div class="checkbox-group" id="${colHoudremont}">
+          <div class="checkbox-group" data-grist-col="${colHoudremont}" id="box-houdremont">
             ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
@@ -382,24 +381,17 @@
         }
       });
 
-      const multiSelectGroups = [
-        'Listes_Diffusion_ Intervenant',
-        'Listes Diffusion Cinéma',
-        'Listes_Diffusion_Direction',
-        'Listes_Diffusion_Houdremont'
-      ];
-
-      multiSelectGroups.forEach(groupId => {
-        const container = document.getElementById(groupId);
-        if (container) {
-          const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
-          if (checkedBoxes.length > 0) {
-            const textesList = ['L'];
-            checkedBoxes.forEach(box => {
-              textesList.push(box.value);
-            });
-            fieldsToSave[groupId] = textesList;
-          }
+      // Récupération sécurisée des listes de diffusion via l'attribut data-grist-col
+      const checkboxGroups = document.querySelectorAll('.checkbox-group[data-grist-col]');
+      checkboxGroups.forEach(container => {
+        const gristColName = container.getAttribute('data-grist-col');
+        const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
+        if (checkedBoxes.length > 0) {
+          const textesList = ['L'];
+          checkedBoxes.forEach(box => {
+            textesList.push(box.value);
+          });
+          fieldsToSave[gristColName] = textesList;
         }
       });
 

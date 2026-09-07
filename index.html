@@ -214,6 +214,7 @@
 
     grist.ready({ requiredAccess: 'full' });
 
+    // Chargement initial des tables de référence
     Promise.all([
       grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
@@ -241,19 +242,17 @@
       construireInterface([]);
     });
 
-    // Fonction universelle robuste gérant tous les formats de retour fetchTable de Grist
+    // Fonction d'extraction propre des étiquettes (compatible avec les listes de Grist)
     function extraireValeursColonne(records, nomColonne) {
       if (!records) return [];
       let valeurs = [];
       
-      // Format 1 : Objet de colonnes { Col1: [...], Col2: [...] }
       if (!Array.isArray(records) && typeof records === 'object') {
         if (records[nomColonne] && Array.isArray(records[nomColonne])) {
           valeurs = records[nomColonne];
         }
       }
       
-      // Format 2 : Tableau de lignes [ {Col1: val}, ... ]
       if (Array.isArray(records)) {
         records.forEach(row => {
           if (row && row[nomColonne] !== undefined && row[nomColonne] !== null) {
@@ -327,16 +326,17 @@
       return null;
     }
 
+    // Étape 1 : Création de la ligne en base avec l'identifiant utilisateur direct
     async function demarrerNouveauContact() {
       document.getElementById('success-banner').style.display = 'none';
 
       try {
         const today = new Date().toISOString().split('T')[0];
 
-        const initialData = { 'DATE_SAISIE_CONTACTS': today };
-        if (currentUserName) {
-          initialData['CREE_PAR'] = currentUserName;
-        }
+        const initialData = { 
+          'DATE_SAISIE_CONTACTS': today,
+          'CREE_PAR': currentUserName // Rattaché immédiatement sans formule circulaire
+        };
 
         const result = await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, initialData]
@@ -380,17 +380,16 @@
       }
     }
 
+    // Étape 2 : Sauvegarde et remplissage de la fiche active
     async function validerEtSauvegarderTout() {
       if (!currentRecordId) {
         alert("Erreur : Aucun ID de fiche n'est actif.");
         return;
       }
 
-      const fieldsToSave = {};
-
-      if (currentUserName) {
-        fieldsToSave['CREE_PAR'] = currentUserName;
-      }
+      const fieldsToSave = {
+        'CREE_PAR': currentUserName
+      };
 
       const inputs = document.querySelectorAll('#form-container input[type="text"], #form-container input[type="date"], #form-container input[type="email"], #form-container input[type="tel"], #form-container textarea');
       inputs.forEach(input => {
@@ -435,6 +434,7 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
+        // Nettoyage et réinitialisation de l'interface
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         document.querySelectorAll('#form-container input[type="checkbox"]').forEach(box => box.checked = false);

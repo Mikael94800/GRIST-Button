@@ -149,7 +149,7 @@
         </select>
       </div>
 
-      <!-- CONTENEUR DES LISTES DE DIFFUSION -->
+      <!-- CONTENEUR DES 4 LISTES DE DIFFUSION -->
       <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
 
       <!-- NOM STRUCTURE -->
@@ -218,7 +218,6 @@
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Récupération de l'utilisateur connecté et de la table ETIQUETTES
     Promise.all([
       grist.user.getCurrentUser().catch(() => null),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
@@ -232,7 +231,6 @@
       construireInterface([]);
     });
 
-    // Fonction simple et robuste pour extraire les valeurs d'une colonne de référence
     function extraireValeursColonne(records, nomColonne) {
       if (!records) return [];
       let valeurs = [];
@@ -255,28 +253,41 @@
     }
 
     function construireInterface(etiquettesRecords) {
-      const itemsCinema = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Cinema');
-      const itemsDirection = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Direction');
-      const itemsHoudremont = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Houdremont');
+      // Correspondance exacte avec vos noms de colonnes dans la table ETIQUETTES
+      const colIntervenant = 'Listes_Diffusion_ Intervenant';
+      const colCinema = 'Listes Diffusion Cinéma';
+      const colDirection = 'Listes_Diffusion_Direction';
+      const colHoudremont = 'Listes_Diffusion_Houdremont';
+
+      const itemsIntervenant = extraireValeursColonne(etiquettesRecords, colIntervenant);
+      const itemsCinema = extraireValeursColonne(etiquettesRecords, colCinema);
+      const itemsDirection = extraireValeursColonne(etiquettesRecords, colDirection);
+      const itemsHoudremont = extraireValeursColonne(etiquettesRecords, colHoudremont);
 
       const wrapper = document.getElementById('diffusion-containers-wrapper');
       
       wrapper.innerHTML = `
         <div class="field-group">
+          <label>Listes Diffusion Intervenant</label>
+          <div class="checkbox-group" id="${colIntervenant}">
+            ${itemsIntervenant.length > 0 ? itemsIntervenant.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+          </div>
+        </div>
+        <div class="field-group">
           <label>Listes Diffusion Cinéma</label>
-          <div class="checkbox-group" id="Listes_Diffusion_Cinema">
+          <div class="checkbox-group" id="${colCinema}">
             ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
         <div class="field-group">
-          <label>Liste Diffusion Direction</label>
-          <div class="checkbox-group" id="Listes_Diffusion_Direction">
+          <label>Listes Diffusion Direction</label>
+          <div class="checkbox-group" id="${colDirection}">
             ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
-        <div class="field-group full-width">
+        <div class="field-group">
           <label>Listes Diffusion Houdremont</label>
-          <div class="checkbox-group" id="Listes_Diffusion_Houdremont">
+          <div class="checkbox-group" id="${colHoudremont}">
             ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
@@ -371,7 +382,13 @@
         }
       });
 
-      const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Listes_Diffusion_Direction', 'Listes_Diffusion_Houdremont'];
+      const multiSelectGroups = [
+        'Listes_Diffusion_ Intervenant',
+        'Listes Diffusion Cinéma',
+        'Listes_Diffusion_Direction',
+        'Listes_Diffusion_Houdremont'
+      ];
+
       multiSelectGroups.forEach(groupId => {
         const container = document.getElementById(groupId);
         if (container) {

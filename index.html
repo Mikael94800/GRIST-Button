@@ -212,10 +212,11 @@
   <script>
     let currentRecordId = null;
     let currentUserProfile = "Direction"; 
+    let currentUserName = "";
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Récupération simultanée de la table UTILISATEURS et de la table ETIQUETTES
+    // Initialisation et chargement des données
     Promise.all([
       grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
@@ -223,9 +224,21 @@
       
       grist.user.getCurrentUser().then(user => {
         const currentUserEmail = user ? user.email : "";
+        
+        // Détermination du nom d'utilisateur pour la colonne CREE_PAR (ex: "Petitjean.Mikael")
+        if (user && user.name) {
+          currentUserName = user.name;
+        }
+
         const matchUser = utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase());
-        if (matchUser && matchUser.Service) {
-          currentUserProfile = matchUser.Service; 
+        if (matchUser) {
+          if (matchUser.Service) {
+            currentUserProfile = matchUser.Service; 
+          }
+          // Si une colonne Nom/Prénom existe dans la table UTILISATEURS, on peut aussi l'utiliser
+          if (matchUser.Nom && matchUser.Prenom) {
+            currentUserName = `${matchUser.Nom}.${matchUser.Prenom}`;
+          }
         }
         construireInterface(etiquettesRecords);
       }).catch(() => {
@@ -241,18 +254,21 @@
       if (!etiquettesRecords) return [];
       let valeurs = [];
       
-      // Si la table renvoyée est un tableau d'objets (format standard Grist fetchTable)
+      // Gestion robuste selon le format retourné par fetchTable (Tableau d'objets ou Objet de colonnes)
       if (Array.isArray(etiquettesRecords)) {
         etiquettesRecords.forEach(row => {
-          if (row[nomColonne] !== undefined && row[nomColonne] !== null && row[nomColonne] !== "") {
-            valeurs.push(row[nomColonne]);
+          let val = row[nomColonne];
+          if (val !== undefined && val !== null && val !== "") {
+            valeurs.push(val);
           }
         });
-      } else if (etiquettesRecords[nomColonne]) {
-        // Format colonne par colonne
-        valeurs = etiquettesRecords[nomColonne].filter(v => v !== null && v !== "");
+      } else if (typeof etiquettesRecords === 'object') {
+        let colData = etiquettesRecords[nomColonne];
+        if (Array.isArray(colData)) {
+          valeurs = colData.filter(v => v !== null && v !== "");
+        }
       }
-      return [...new Set(valeurs)]; // Valeurs uniques
+      return [...new Set(valeurs)]; 
     }
 
     function construireInterface(etiquettesRecords) {
@@ -267,13 +283,13 @@
       }
 
       selectService.innerHTML = '<option value="">-- Sélectionner --</option>' + 
-        servicesDispos.choices ? '' : servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
+        servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
 
       if (servicesDispos.length === 1) {
         selectService.value = servicesDispos[0];
       }
 
-      // 2. Récupération dynamique des libellés depuis la table ETIQUETTES
+      // 2. Récupération des libellés depuis la table ETIQUETTES
       const itemsCinema = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Cinema');
       const itemsDirection = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Direction');
       const itemsHoudremont = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Houdremont');
@@ -291,7 +307,6 @@
           { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection }
         ];
       } else {
-        // Direction voit tout
         listesDispos = [
           { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: itemsCinema },
           { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection },
@@ -326,8 +341,14 @@
       try {
         const today = new Date().toISOString().split('T')[0];
 
+        // On injecte directement CREE_PAR pour éviter l'erreur de référence circulaire (#CircularRef)
+        const initialData = { 'DATE_SAISIE_CONTACTS': today };
+        if (currentUserName) {
+          initialData['CREE_PAR'] = currentUserName;
+        }
+
         const result = await grist.docApi.applyUserActions([
-          ['AddRecord', 'CONTACTS', null, { 'DATE_SAISIE_CONTACTS': today }]
+          ['AddRecord', 'CONTACTS', null, initialData]
         ]);
 
         currentRecordId = parseGristId(result);
@@ -398,7 +419,7 @@
         }
       });
 
-      // Gestion des listes de diffusion textuelles multiples (type ChoiceList dans Grist)
+      // Gestion des listes de diffusion textuelles multiples (ChoiceList)
       const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Listes_Diffusion_Direction', 'Listes_Diffusion_Houdremont'];
       
       multiSelectGroups.forEach(groupId => {
@@ -408,7 +429,7 @@
           if (checkedBoxes.length > 0) {
             const textesList = ['L'];
             checkedBoxes.forEach(box => {
-              textesList.push(box.value); // On envoie directement le texte complet de l'étiquette
+              textesList.push(box.value);
             });
             fieldsToSave[groupId] = textesList;
           }

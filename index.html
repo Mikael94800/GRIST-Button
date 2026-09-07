@@ -8,10 +8,10 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { margin: 0; padding: 16px; background-color: transparent; }
     #action-container { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
-    .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); transition: background-color 0.2s; }
+    .btn-create { background-color: #1677ff; color: white; border: none; padding: 24px 36px; font-size: 22px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); }
     .btn-create:hover { background-color: #0958d9; }
     
-    .alert-success { display: none; background-color: #f6ffed; border: 1px solid #b7eb8f; color: #274fee; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; width: 100%; box-shadow: 0 2px 8px rgba(82, 196, 26, 0.15); }
+    .alert-success { display: none; background-color: #f6ffed; border: 1px solid #b7eb8f; color: #274fee; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; width: 100%; }
     
     #form-container { display: none; background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
     .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1677ff; }
@@ -21,15 +21,15 @@
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .full-width { grid-column: span 2; }
     .field-group { display: flex; flex-direction: column; gap: 4px; }
-    label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
+    label { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; }
     input[type="text"], input[type="date"], input[type="email"], input[type="tel"], select, textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background-color: #fff; width: 100%; }
     input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15); }
     
     .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
-    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; font-weight: normal; cursor: pointer; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; cursor: pointer; }
     .checkbox-item input { width: auto; cursor: pointer; }
 
-    .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
+    .btn-finish { margin-top: 20px; background-color: #52c41a; color: white; border: none; padding: 14px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; }
     .btn-finish:hover { background-color: #389e0d; }
   </style>
 </head>
@@ -58,6 +58,12 @@
         <label>Service (Origine)</label>
         <select id="Service">
           <option value="">-- Sélectionner --</option>
+          <option value="Arts visuels">Arts visuels</option>
+          <option value="Cinéma">Cinéma</option>
+          <option value="EAC">EAC</option>
+          <option value="Houdremont">Houdremont</option>
+          <option value="Patrimoine">Patrimoine</option>
+          <option value="Direction">Direction</option>
         </select>
       </div>
 
@@ -90,7 +96,7 @@
           <option value="4">Musée/services d'archives</option>
           <option value="5">Société de distribution</option>
           <option value="6">Artiste</option>
-          <option value="7">Réseaux professionnels (fédérations, syndicats, ...)</option>
+          <option value="7">Réseaux professionnels</option>
           <option value="8">Festival</option>
           <option value="9">Média</option>
           <option value="10">École maternelle</option>
@@ -108,9 +114,9 @@
           <option value="22">Club sportif</option>
           <option value="23">Crèches, PMI, assistante</option>
           <option value="24">Salle de cinéma</option>
-          <option value="25">Services pénitentiaires et judiciaires (SPIP, DTPJJ) et partenaires</option>
-          <option value="26">Mission locale, France Travail, Maison de l'Emploi</option>
-          <option value="27">Soutien scolaire (services municipaux, associations)</option>
+          <option value="25">Services pénitentiaires et judiciaires</option>
+          <option value="26">Mission locale, France Travail</option>
+          <option value="27">Soutien scolaire</option>
           <option value="28">Ayant droits d'artiste</option>
           <option value="29">Autres</option>
           <option value="30">Association culturelle</option>
@@ -143,7 +149,7 @@
         </select>
       </div>
 
-      <!-- CONTENEUR DYNAMIQUE DES LISTES DE DIFFUSION -->
+      <!-- CONTENEUR DES LISTES DE DIFFUSION -->
       <div id="diffusion-containers-wrapper" class="full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
 
       <!-- NOM STRUCTURE -->
@@ -175,7 +181,7 @@
       <!-- FONCTION -->
       <div class="field-group full-width">
         <label>Fonction / Profession</label>
-        <input type="text" id="Fonction_Profession" placeholder="ex: Responsable, Chargé de mission...">
+        <input type="text" id="Fonction_Profession" placeholder="ex: Responsable...">
       </div>
 
       <!-- ADRESSE, CODE POSTAL, VILLE, PAYS -->
@@ -208,41 +214,25 @@
 
   <script>
     let currentRecordId = null;
-    let currentUserProfile = "Direction"; 
     let currentUserName = "Petitjean.Mikael"; 
-    let globalEtiquettesRecords = [];
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Chargement initial des tables de référence
+    // Récupération de l'utilisateur connecté et de la table ETIQUETTES
     Promise.all([
-      grist.docApi.fetchTable('UTILISATEURS').catch(() => []),
+      grist.user.getCurrentUser().catch(() => null),
       grist.docApi.fetchTable('ETIQUETTES').catch(() => [])
-    ]).then(([utilisateurs, etiquettesRecords]) => {
-      globalEtiquettesRecords = etiquettesRecords;
-      
-      grist.user.getCurrentUser().then(user => {
-        const currentUserEmail = user ? user.email : "";
-        if (user && user.name) {
-          currentUserName = user.name;
-        }
-
-        const matchUser = Array.isArray(utilisateurs) ? utilisateurs.find(u => u.Email && u.Email.toLowerCase() === currentUserEmail.toLowerCase()) : null;
-        if (matchUser) {
-          if (matchUser.Service) currentUserProfile = matchUser.Service; 
-          if (matchUser.Nom && matchUser.Prenom) currentUserName = `${matchUser.Nom}.${matchUser.Prenom}`;
-        }
-        construireInterface(globalEtiquettesRecords);
-      }).catch(() => {
-        construireInterface(globalEtiquettesRecords);
-      });
-
+    ]).then(([user, etiquettesRecords]) => {
+      if (user && user.name) {
+        currentUserName = user.name;
+      }
+      construireInterface(etiquettesRecords);
     }).catch(err => {
-      console.error("Erreur de chargement initial :", err);
+      console.error("Erreur de chargement :", err);
       construireInterface([]);
     });
 
-    // Fonction d'extraction propre des étiquettes (compatible avec les listes de Grist)
+    // Fonction simple et robuste pour extraire les valeurs d'une colonne de référence
     function extraireValeursColonne(records, nomColonne) {
       if (!records) return [];
       let valeurs = [];
@@ -261,59 +251,36 @@
         });
       }
 
-      return [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null"))];
+      return [...new Set(valeurs.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null" && v !== "NaN"))];
     }
 
     function construireInterface(etiquettesRecords) {
-      const selectService = document.getElementById('Service');
-      let servicesDispos = ["Arts visuels", "Cinéma", "EAC", "Houdremont", "Patrimoine", "Direction"];
-
-      if (currentUserProfile === "Cinéma") {
-        servicesDispos = ["Cinéma"];
-      } else if (currentUserProfile === "Houdremont") {
-        servicesDispos = ["Houdremont"];
-      }
-
-      selectService.innerHTML = '<option value="">-- Sélectionner --</option>' + 
-        servicesDispos.map(s => `<option value="${s}">${s}</option>`).join('');
-
-      if (servicesDispos.length === 1) {
-        selectService.value = servicesDispos[0];
-      }
-
       const itemsCinema = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Cinema');
       const itemsDirection = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Direction');
       const itemsHoudremont = extraireValeursColonne(etiquettesRecords, 'Listes_Diffusion_Houdremont');
 
       const wrapper = document.getElementById('diffusion-containers-wrapper');
-      let listesDispos = [];
-
-      if (currentUserProfile === "Houdremont") {
-        listesDispos = [
-          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: itemsHoudremont }
-        ];
-      } else if (currentUserProfile === "Cinéma") {
-        listesDispos = [
-          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: itemsCinema },
-          { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection }
-        ];
-      } else {
-        listesDispos = [
-          { id: "Listes_Diffusion_Cinema", label: "Listes Diffusion Cinéma", items: itemsCinema },
-          { id: "Listes_Diffusion_Direction", label: "Liste Diffusion Direction", items: itemsDirection },
-          { id: "Listes_Diffusion_Houdremont", label: "Listes Diffusion Houdremont", items: itemsHoudremont }
-        ];
-      }
-
-      wrapper.style.gridTemplateColumns = listesDispos.length > 1 ? "1fr 1fr" : "1fr";
-      wrapper.innerHTML = listesDispos.map(grp => `
+      
+      wrapper.innerHTML = `
         <div class="field-group">
-          <label>${grp.label}</label>
-          <div class="checkbox-group" id="${grp.id}">
-            ${grp.items.length > 0 ? grp.items.map(textVal => `<label class="checkbox-item"><input type="checkbox" value="${textVal}"> ${textVal}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette disponible</span>'}
+          <label>Listes Diffusion Cinéma</label>
+          <div class="checkbox-group" id="Listes_Diffusion_Cinema">
+            ${itemsCinema.length > 0 ? itemsCinema.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
           </div>
         </div>
-      `).join('');
+        <div class="field-group">
+          <label>Liste Diffusion Direction</label>
+          <div class="checkbox-group" id="Listes_Diffusion_Direction">
+            ${itemsDirection.length > 0 ? itemsDirection.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+          </div>
+        </div>
+        <div class="field-group full-width">
+          <label>Listes Diffusion Houdremont</label>
+          <div class="checkbox-group" id="Listes_Diffusion_Houdremont">
+            ${itemsHoudremont.length > 0 ? itemsHoudremont.map(v => `<label class="checkbox-item"><input type="checkbox" value="${v}"> ${v}</label>`).join('') : '<span style="font-size:12px; color:#9ca3af; padding:4px;">Aucune étiquette</span>'}
+          </div>
+        </div>
+      `;
     }
 
     function parseGristId(response) {
@@ -326,7 +293,6 @@
       return null;
     }
 
-    // Étape 1 : Création de la ligne en base avec l'identifiant utilisateur direct
     async function demarrerNouveauContact() {
       document.getElementById('success-banner').style.display = 'none';
 
@@ -335,7 +301,7 @@
 
         const initialData = { 
           'DATE_SAISIE_CONTACTS': today,
-          'CREE_PAR': currentUserName // Rattaché immédiatement sans formule circulaire
+          'CREE_PAR': currentUserName 
         };
 
         const result = await grist.docApi.applyUserActions([
@@ -347,11 +313,6 @@
         if (currentRecordId) {
           document.getElementById('display-id').innerText = `ID Ligne: ${currentRecordId}`;
           document.getElementById('DATE_SAISIE_CONTACTS').value = today;
-
-          const selectService = document.getElementById('Service');
-          if (selectService.options.length === 2) {
-            selectService.selectedIndex = 1;
-          }
 
           document.getElementById('action-container').style.display = 'none';
           document.getElementById('form-container').style.display = 'block';
@@ -380,7 +341,6 @@
       }
     }
 
-    // Étape 2 : Sauvegarde et remplissage de la fiche active
     async function validerEtSauvegarderTout() {
       if (!currentRecordId) {
         alert("Erreur : Aucun ID de fiche n'est actif.");
@@ -399,12 +359,10 @@
       });
 
       const refFields = ['STATUT_JURIDIQUE', 'TYPE_DE_STRUCTURE_CONTACT', 'DOMAINE_D_ACTIVITES'];
-
       const selects = document.querySelectorAll('#form-container select');
       selects.forEach(select => {
         if (select.id && select.value !== '') {
           const valNum = parseInt(select.value, 10);
-
           if (refFields.includes(select.id) && !isNaN(valNum)) {
             fieldsToSave[select.id] = ['L', valNum];
           } else {
@@ -414,7 +372,6 @@
       });
 
       const multiSelectGroups = ['Listes_Diffusion_Cinema', 'Listes_Diffusion_Direction', 'Listes_Diffusion_Houdremont'];
-      
       multiSelectGroups.forEach(groupId => {
         const container = document.getElementById(groupId);
         if (container) {
@@ -434,7 +391,6 @@
           ['UpdateRecord', 'CONTACTS', currentRecordId, fieldsToSave]
         ]);
 
-        // Nettoyage et réinitialisation de l'interface
         inputs.forEach(input => input.value = '');
         selects.forEach(select => select.selectedIndex = 0);
         document.querySelectorAll('#form-container input[type="checkbox"]').forEach(box => box.checked = false);

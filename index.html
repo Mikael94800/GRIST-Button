@@ -143,6 +143,7 @@
       </div>
     </div>
 
+    <!-- Listes de Diffusion intégrées -->
     <div class="section-subtitle">Listes de Diffusion</div>
     <div class="checkboxes-container">
       <div class="field-group">
@@ -156,10 +157,38 @@
       </div>
 
       <div class="field-group">
-        <label>Diffusion DCP</label>
-        <div class="checkbox-group" id="group-dcp">
-          <label class="checkbox-item"><input type="checkbox" value="DCP 1"> DCP 1</label>
-          <label class="checkbox-item"><input type="checkbox" value="DCP 2"> DCP 2</label>
+        <label>Diffusion Direction</label>
+        <div class="checkbox-group" id="group-direction">
+          <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
+          <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
+          <label class="checkbox-item"><input type="checkbox" value="DAC_93"> DAC_93</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Diffusion Houdremont</label>
+        <div class="checkbox-group" id="group-houdremont">
+          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
+          <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Diffusion Intervenant</label>
+        <div class="checkbox-group" id="group-intervenant">
+          <label class="checkbox-item"><input type="checkbox" value="Cinéma"> Cinéma</label>
+          <label class="checkbox-item"><input type="checkbox" value="PEAC 26-27"> PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Patrimoine"> Patrimoine</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
+          <label class="checkbox-item"><input type="checkbox" value="Direction"> Direction</label>
+          <label class="checkbox-item"><input type="checkbox" value="Arts plastiques"> Arts plastiques</label>
         </div>
       </div>
     </div>
@@ -291,9 +320,11 @@
         Pays: document.getElementById('input-pays').value || 'France',
         Commentaire_Description: document.getElementById('input-commentaire').value || null,
         
-        // Listes de diffusion avec cases à cocher
+        // Listes de diffusion avec les cases à cocher et noms corrects
         'Listes Diffusion Cinéma': recupererCasesCochees('group-cinema'),
-        'Listes Diffusion DCP': recupererCasesCochees('group-dcp')
+        'Listes_Diffusion_Direction': recupererCasesCochees('group-direction'),
+        'Listes_Diffusion_Houdremont': recupererCasesCochees('group-houdremont'),
+        'Listes_Diffusion_Intervenant': recupererCasesCochees('group-intervenant')
       };
 
       try {

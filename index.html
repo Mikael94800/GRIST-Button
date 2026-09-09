@@ -161,15 +161,9 @@
   </div>
 
   <script>
-    let currentUser = null;
-
     grist.ready({ 
       requiredAccess: 'full',
       columns: [] 
-    });
-
-    grist.onUser((user) => {
-      currentUser = user;
     });
 
     grist.onRecords(function(records) {
@@ -178,31 +172,22 @@
       }
     });
 
-    async function chargerEtiquettes() {
-      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes'];
-      for (const nom of nomsPossibles) {
-        try {
-          const rawTable = await grist.docApi.fetchTable(nom);
-          if (rawTable && rawTable.id) {
-            const ids = rawTable.id || [];
-            const etiquettesRows = ids.map((id, index) => {
-              const row = { id };
-              for (const key of Object.keys(rawTable)) {
-                if (key !== 'id') {
-                  row[key] = rawTable[key][index];
-                }
-              }
-              return row;
-            });
-            peuplerCasesACocher(etiquettesRows);
-            return;
+    // Chargement de la table ETIQUETTES convertie en tableau de lignes
+    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
+      const ids = rawTable.id || [];
+      const etiquettesRows = ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
           }
-        } catch (e) {}
-      }
-    }
-
-    chargerEtiquettes();
-    setTimeout(chargerEtiquettes, 1000);
+        }
+        return row;
+      });
+      peuplerCasesACocher(etiquettesRows);
+    }).catch(err => {
+      console.error("Impossible de charger la table ETIQUETTES :", err);
+    });
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -267,7 +252,7 @@
           if (data.features && data.features.length > 0) {
             document.getElementById('add-ville').value = data.features[0].properties.city;
           }
-        } catch (e) {}
+        } catch (e) { console.error(e); }
       }
     }
 
@@ -311,8 +296,6 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
-      const today = new Date().toISOString().split('T')[0];
-
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -327,9 +310,7 @@
         EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
-        Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
-        Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
-        Date_Saisie: today
+        Commentaire_Description: document.getElementById('add-commentaire').value.trim()
       };
 
       const cinema = recupererCochesIds('group-add-cinema');
@@ -353,7 +334,6 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
-        chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
         debugBox.style.display = 'block';

@@ -260,7 +260,7 @@
         msg.className = 'email-msg error';
         msg.innerText = '✕ Adresse e-mail invalide';
       }
-      return true; // Ne bloque pas l'enregistrement même si l'e-mail est mal formaté
+      return true;
     }
 
     function recupererCoches(containerId) {
@@ -274,7 +274,6 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
-      // Utilisation d'un objet dynamique pour n'envoyer que les colonnes standard et éviter les plantages si une liste varie
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -292,7 +291,6 @@
         Commentaire_Description: document.getElementById('add-commentaire').value.trim()
       };
 
-      // Ajout sécurisé des listes de diffusion (si la colonne existe dans la table Grist)
       const cinema = recupererCoches('group-add-cinema');
       if (cinema.length > 1) recordData.Listes_Diffusion_Cinema = cinema;
 
@@ -302,11 +300,11 @@
       const houdremont = recupererCoches('group-add-houdremont');
       if (houdremont.length > 1) recordData.Listes_Diffusion_Houdremont = houdremont;
 
+      // Teste dynamiquement les noms possibles pour la colonne des intervenants (avec 's' ou nom court)
       const intervenant = recupererCoches('group-add-intervenant');
       if (intervenant.length > 1) {
-        // Gère les variantes de nom possibles pour cette colonne spécifique
-        recordData.Listes_Diffusion_Intervenant = intervenant;
-        recordData.Listes_Diffusion_intervenant = intervenant;
+        recordData.Listes_Diffusion_Intervenants = intervenant; // Avec un 's'
+        recordData.Diffusion_Intervenant = intervenant;         // Autre variante possible
       }
 
       try {

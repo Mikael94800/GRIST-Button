@@ -127,22 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema"></div>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction"></div>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont"></div>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant"></div>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
         </div>
       </div>
 
@@ -179,7 +179,9 @@
     });
 
     async function chargerEtiquettes() {
+      const debugBox = document.getElementById('debug-box');
       const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes'];
+      
       for (const nom of nomsPossibles) {
         try {
           const rawTable = await grist.docApi.fetchTable(nom);
@@ -197,13 +199,22 @@
             peuplerCasesACocher(etiquettesRows);
             return;
           }
-        } catch (e) {}
+        } catch (e) {
+          // Continue à tester les autres noms
+        }
       }
+
+      // Si aucune table n'a été trouvée
+      document.getElementById('group-add-cinema').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
+      document.getElementById('group-add-direction').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
+      document.getElementById('group-add-houdremont').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
+      document.getElementById('group-add-intervenant').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
+      
+      debugBox.style.display = 'block';
+      debugBox.innerText = "❌ ERREUR : Le script ne parvient pas à trouver la table 'ETIQUETTES'. Vérifiez son nom exact dans Grist.";
     }
 
     chargerEtiquettes();
-    // Sécurité supplémentaire : recharge les listes toutes les secondes si elles tardent à s'afficher
-    setTimeout(chargerEtiquettes, 1000);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -213,9 +224,11 @@
         const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
         container.innerHTML = '';
         
+        let count = 0;
         etiquettes.forEach(row => {
           const val = row[columnName];
-          if (val) {
+          if (val !== undefined && val !== null && String(val).trim() !== "") {
+            count++;
             const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
             container.innerHTML += `
               <label class="checkbox-item">
@@ -224,6 +237,10 @@
             `;
           }
         });
+
+        if (count === 0) {
+          container.innerHTML = `<span style="color:orange; font-size:12px;">Col. "${columnName}" vide ou absente</span>`;
+        }
       };
 
       mapper('group-add-cinema', 'Listes_Diffusion_Cinema');

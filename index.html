@@ -161,16 +161,9 @@
   </div>
 
   <script>
-    let currentUser = null;
-
     grist.ready({ 
       requiredAccess: 'full',
       columns: [] 
-    });
-
-    // Récupération des informations sur l'utilisateur connecté
-    grist.onUser((user) => {
-      currentUser = user;
     });
 
     grist.onRecords(function(records) {
@@ -179,22 +172,34 @@
       }
     });
 
-    // Chargement de la table ETIQUETTES convertie en tableau de lignes
-    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
-      const ids = rawTable.id || [];
-      const etiquettesRows = ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
+    // Chargement sécurisé de la table des étiquettes (gestion automatique de la casse)
+    async function chargerEtiquettes() {
+      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes'];
+      for (const nom of nomsPossibles) {
+        try {
+          const rawTable = await grist.docApi.fetchTable(nom);
+          if (rawTable && rawTable.id) {
+            const ids = rawTable.id || [];
+            const etiquettesRows = ids.map((id, index) => {
+              const row = { id };
+              for (const key of Object.keys(rawTable)) {
+                if (key !== 'id') {
+                  row[key] = rawTable[key][index];
+                }
+              }
+              return row;
+            });
+            peuplerCasesACocher(etiquettesRows);
+            return;
           }
+        } catch (e) {
+          // Essaie le nom suivant
         }
-        return row;
-      });
-      peuplerCasesACocher(etiquettesRows);
-    }).catch(err => {
-      console.error("Impossible de charger la table ETIQUETTES :", err);
-    });
+      }
+      console.error("Impossible de trouver la table ETIQUETTES.");
+    }
+
+    chargerEtiquettes();
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -317,15 +322,8 @@
         EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
-        Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
-        // Remplissage explicite des champs automatiques :
-        Date_Saisie: Math.floor(Date.now() / 1000)
+        Commentaire_Description: document.getElementById('add-commentaire').value.trim()
       };
-
-      // Si l'utilisateur connecté est connu, on renseigne son email ou son identifiant dans la colonne "Cree_par" (ou "Created_By" selon le nom exact de ta colonne)
-      if (currentUser && currentUser.email) {
-        recordData.Cree_par = currentUser.email; 
-      }
 
       const cinema = recupererCochesIds('group-add-cinema');
       if (cinema.length > 1) recordData.Listes_Diffusion_Cinema = cinema;

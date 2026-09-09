@@ -39,7 +39,7 @@
     .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-submit:hover { background-color: #166534; }
 
-    #debug-box { margin-top: 20px; padding: 12px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; color: #b45309; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
+    #debug-box { margin-top: 20px; padding: 12px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
   </style>
 </head>
 <body>
@@ -127,22 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
+          <div class="checkbox-group" id="group-add-cinema"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
+          <div class="checkbox-group" id="group-add-direction"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
+          <div class="checkbox-group" id="group-add-houdremont"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
+          <div class="checkbox-group" id="group-add-intervenant"></div>
         </div>
       </div>
 
@@ -179,10 +179,7 @@
     });
 
     async function chargerEtiquettes() {
-      const debugBox = document.getElementById('debug-box');
-      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes', 'Table1'];
-      let succes = false;
-
+      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes'];
       for (const nom of nomsPossibles) {
         try {
           const rawTable = await grist.docApi.fetchTable(nom);
@@ -198,22 +195,14 @@
               return row;
             });
             peuplerCasesACocher(etiquettesRows);
-            succes = true;
-            break;
+            return;
           }
-        } catch (e) {
-          console.warn(`Tentative échouée pour la table ${nom}:`, e);
-        }
-      }
-
-      if (!succes) {
-        debugBox.style.display = 'block';
-        debugBox.innerText = "⚠️ Diagnostic : Impossible de charger la table 'ETIQUETTES'. Assurez-vous que le widget a bien le niveau d'accès 'Plein (Full)' dans les paramètres de configuration du widget Grist sur la droite.";
+        } catch (e) {}
       }
     }
 
     chargerEtiquettes();
-    setTimeout(chargerEtiquettes, 1500);
+    setTimeout(chargerEtiquettes, 1000);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -223,11 +212,9 @@
         const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
         container.innerHTML = '';
         
-        let count = 0;
         etiquettes.forEach(row => {
           const val = row[columnName];
           if (val) {
-            count++;
             const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
             container.innerHTML += `
               <label class="checkbox-item">
@@ -236,10 +223,6 @@
             `;
           }
         });
-
-        if (count === 0) {
-          container.innerHTML = `<span style="color:#b45309; font-size:12px;">Col. "${columnName}" vide</span>`;
-        }
       };
 
       mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
@@ -279,7 +262,7 @@
       const clean = cp.trim();
       if (/^\d{5}$/.test(clean)) {
         try {
-          const res = __fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
+          const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
           const data = await res.json();
           if (data.features && data.features.length > 0) {
             document.getElementById('add-ville').value = data.features[0].properties.city;

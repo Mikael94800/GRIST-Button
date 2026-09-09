@@ -125,22 +125,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema"></div>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction"></div>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont"></div>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant"></div>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
         </div>
       </div>
 
@@ -164,7 +164,6 @@
       columns: [] 
     });
 
-    // Récupération de l'utilisateur connecté dans Grist
     grist.onUser((user) => {
       currentUser = user;
     });
@@ -196,8 +195,9 @@
       }
     }
 
-    chargerEtiquettes();
-    setTimeout(chargerEtiquettes, 1000);
+    // Double tentative pour garantir le chargement après initialisation complète de Grist
+    setTimeout(chargerEtiquettes, 200);
+    setTimeout(chargerEtiquettes, 1200);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -303,7 +303,6 @@
     async function enregistrerContact(event) {
       event.preventDefault();
 
-      // Date du jour au format YYYY-MM-DD
       const today = new Date().toISOString().split('T')[0];
 
       const recordData = {
@@ -321,7 +320,6 @@
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
         Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
-        // Champs automatiques ajoutés proprement :
         Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
         Date_Saisie: today
       };

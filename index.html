@@ -38,15 +38,12 @@
     .actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
     .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-submit:hover { background-color: #166534; }
-    
-    .error-banner { background: #ffeeec; color: #c53030; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; display: none; }
   </style>
 </head>
 <body>
 
   <div class="form-card">
     <div class="card-title">➕ Création d'un nouveau contact</div>
-    <div id="error-banner" class="error-banner"></div>
 
     <form id="contact-form" onsubmit="enregistrerContact(event)">
       
@@ -167,75 +164,42 @@
       columns: [] 
     });
 
+    // Récupération de l'utilisateur connecté
     grist.onUser((user) => {
-      if (user) {
-        currentUser = user;
+      if (user) currentUser = user;
+    });
+
+    // Utilisation de onRecords (qui fonctionnait avant pour alimenter les listes déroulantes)
+    grist.onRecords(function(records) {
+      if (records && records.length > 0) {
+        remplirSelects(records);
       }
     });
 
-    function afficherErreur(msg) {
-      const banner = document.getElementById('error-banner');
-      banner.style.display = 'block';
-      banner.innerText = "Attention : " + msg;
-    }
-
-    function transformerTableBrute(rawTable) {
-      if (!rawTable || !rawTable.id) return [];
-      const ids = rawTable.id || [];
-      return ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
-          }
-        }
-        return row;
-      });
-    }
-
+    // Chargement indépendant des étiquettes pour les cases à cocher
     async function chargerEtiquettes() {
       try {
         const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
-        const etiquettesRows = transformerTableBrute(rawTable);
-        peuplerCasesACocher(etiquettesRows);
-      } catch (e) {
-        console.error("Erreur ETIQUETTES:", e);
-        // Essai avec minuscule si échec
-        try {
-          const rawTable2 = await grist.docApi.fetchTable('Etiquettes');
-          peuplerCasesACocher(transformerTableBrute(rawTable2));
-        } catch (err2) {
-          document.getElementById('group-add-cinema').innerHTML = '<span style="color:red;font-size:12px;">Table ETIQUETTES introuvable</span>';
-          document.getElementById('group-add-direction').innerHTML = '<span style="color:red;font-size:12px;">Table ETIQUETTES introuvable</span>';
-          document.getElementById('group-add-houdremont').innerHTML = '<span style="color:red;font-size:12px;">Table ETIQUETTES introuvable</span>';
-          document.getElementById('group-add-intervenant').innerHTML = '<span style="color:red;font-size:12px;">Table ETIQUETTES introuvable</span>';
+        if (rawTable && rawTable.id) {
+          const ids = rawTable.id || [];
+          const etiquettesRows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') {
+                row[key] = rawTable[key][index];
+              }
+            }
+            return row;
+          });
+          peuplerCasesACocher(etiquettesRows);
         }
+      } catch (e) {
+        console.error("Erreur chargement étiquettes:", e);
       }
     }
 
-    async function chargerContactsPourSelects() {
-      try {
-        const rawTable = await grist.docApi.fetchTable('CONTACTS');
-        const contactsRows = transformerTableBrute(rawTable);
-        remplirSelects(contactsRows);
-      } catch (e) {
-        console.error("Erreur CONTACTS:", e);
-        try {
-          const rawTable2 = await grist.docApi.fetchTable('Contacts');
-          remplirSelects(transformerTableBrute(rawTable2));
-        } catch (err2) {
-          afficherErreur("Impossible de lire la table CONTACTS pour les menus déroulants.");
-        }
-      }
-    }
-
-    function initialiserDonnees() {
-      chargerEtiquettes();
-      chargerContactsPourSelects();
-    }
-
-    setTimeout(initialiserDonnees, 300);
-    setTimeout(initialiserDonnees, 1500);
+    setTimeout(chargerEtiquettes, 300);
+    setTimeout(chargerEtiquettes, 1500);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -270,13 +234,14 @@
         cles.forEach(k => {
           if (r[k] !== undefined && r[k] !== null) {
             let val = r[k];
-            // Si c'est un objet de choix ou de référence complexe
             if (typeof val === 'object' && val !== null) {
-              val = val.L || val.name || val.value || JSON.stringify(val);
+              val = val.L || val.name || val.value || "";
             }
-            String(val).split(/[,;]/).forEach(v => { 
-              if (v.trim()) set.add(v.trim()); 
-            });
+            if (val) {
+              String(val).split(/[,;]/).forEach(v => { 
+                if (v.trim()) set.add(v.trim()); 
+              });
+            }
           }
         });
       });
@@ -292,10 +257,9 @@
         el.value = cur;
       };
 
-      // Recherche large des variantes de noms de colonnes possibles
-      alimenter('add-service', extraireUniques(records, ['Service', 'service', 'Service_Origine', 'service_origine']));
-      alimenter('add-statut', extraireUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique', 'statut_juridique', 'Statut']));
-      alimenter('add-type-struct', extraireUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE', 'Type_de_structure', 'type_de_structure']));
+      alimenter('add-service', extraireUniques(records, ['Service', 'Service_Origine']));
+      alimenter('add-statut', extraireUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique']));
+      alimenter('add-type-struct', extraireUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE']));
     }
 
     async function chercherVilleParCodePostal(cp) {
@@ -349,8 +313,6 @@
       event.preventDefault();
 
       const today = new Date().toISOString().split('T')[0];
-
-      // Récupération sécurisée du nom de l'utilisateur connecté
       let nomUtilisateur = "Utilisateur";
       if (currentUser) {
         nomUtilisateur = currentUser.name || currentUser.email || currentUser.username || "Utilisateur";
@@ -396,7 +358,7 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
-        initialiserDonnees();
+        chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
         alert("Erreur lors de l'enregistrement : " + (err.message || JSON.stringify(err)));

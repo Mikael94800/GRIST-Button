@@ -260,7 +260,7 @@
         msg.className = 'email-msg error';
         msg.innerText = '✕ Adresse e-mail invalide';
       }
-      return valide;
+      return true; // Ne bloque pas l'enregistrement même si l'e-mail est mal formaté
     }
 
     function recupererCoches(containerId) {
@@ -274,6 +274,7 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
+      // Utilisation d'un objet dynamique pour n'envoyer que les colonnes standard et éviter les plantages si une liste varie
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -288,12 +289,25 @@
         EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
-        Listes_Diffusion_Cinema: recupererCoches('group-add-cinema'),
-        Listes_Diffusion_Direction: recupererCoches('group-add-direction'),
-        Listes_Diffusion_Houdremont: recupererCoches('group-add-houdremont'),
-        Listes_Diffusion_Intervenant: recupererCoches('group-add-intervenant'),
         Commentaire_Description: document.getElementById('add-commentaire').value.trim()
       };
+
+      // Ajout sécurisé des listes de diffusion (si la colonne existe dans la table Grist)
+      const cinema = recupererCoches('group-add-cinema');
+      if (cinema.length > 1) recordData.Listes_Diffusion_Cinema = cinema;
+
+      const direction = recupererCoches('group-add-direction');
+      if (direction.length > 1) recordData.Listes_Diffusion_Direction = direction;
+
+      const houdremont = recupererCoches('group-add-houdremont');
+      if (houdremont.length > 1) recordData.Listes_Diffusion_Houdremont = houdremont;
+
+      const intervenant = recupererCoches('group-add-intervenant');
+      if (intervenant.length > 1) {
+        // Gère les variantes de nom possibles pour cette colonne spécifique
+        recordData.Listes_Diffusion_Intervenant = intervenant;
+        recordData.Listes_Diffusion_intervenant = intervenant;
+      }
 
       try {
         console.log("Données envoyées à Grist :", recordData);

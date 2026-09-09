@@ -38,8 +38,6 @@
     .actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
     .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-submit:hover { background-color: #166534; }
-
-    #debug-box { margin-top: 20px; padding: 12px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
   </style>
 </head>
 <body>
@@ -127,22 +125,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
+          <div class="checkbox-group" id="group-add-cinema"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
+          <div class="checkbox-group" id="group-add-direction"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
+          <div class="checkbox-group" id="group-add-houdremont"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
+          <div class="checkbox-group" id="group-add-intervenant"></div>
         </div>
       </div>
 
@@ -155,8 +153,6 @@
       <div class="actions">
         <button type="submit" class="btn-submit">✔ Valider et enregistrer la fiche</button>
       </div>
-
-      <div id="debug-box"></div>
     </form>
   </div>
 
@@ -168,42 +164,21 @@
       columns: [] 
     });
 
+    // Récupération de l'utilisateur connecté dans Grist
     grist.onUser((user) => {
       currentUser = user;
     });
 
-    // Récupération des contacts pour les menus déroulants
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
 
-    // Récupération dynamique de la table ETIQUETTES via les tables du document
     async function chargerEtiquettes() {
-      const debugBox =.getElementById('debug-box');
       try {
-        // Essai avec l'identifiant interne standardisé de Grist pour les tables
-        const tables = ['ETIQUETTES', 'Etiquettes', 'etiquettes', 'Table1'];
-        let rawTable = null;
-        
-        for (const t of tables) {
-          try {
-            rawTable = await grist.docApi.fetchTable(t);
-            if (rawTable && (rawTable.id || rawTable.Listes_Diffusion_Cinema)) break;
-          } catch(ex) {}
-        }
-
-        if (!rawTable) {
-          // Fallback ultime via l'API de sélection de table si disponible
-          const tableList = await grist.docApi.listTables?.();
-          if (tableList) {
-            const match = tableList.find(t => t.toLowerCase().includes('etiquette'));
-            if (match) rawTable = await grist.docApi.fetchTable(match);
-          }
-        }
-
-        if (rawTable) {
+        const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
+        if (rawTable && rawTable.id) {
           const ids = rawTable.id || [];
           const etiquettesRows = ids.map((id, index) => {
             const row = { id };
@@ -215,18 +190,14 @@
             return row;
           });
           peuplerCasesACocher(etiquettesRows);
-        } else {
-          document.querySelectorAll('.checkbox-group').forEach(el => {
-            el.innerHTML = '<span style="color:red; font-size:12px;">Vérifiez le lien de la table</span>';
-          });
         }
-      } catch (err) {
-        console.error("Erreur chargement étiquettes:", err);
+      } catch (e) {
+        console.error("Erreur chargement étiquettes:", e);
       }
     }
 
     chargerEtiquettes();
-    setTimeout(chargerEtiquettes, 1500); // Double sécurité au chargement
+    setTimeout(chargerEtiquettes, 1000);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -236,11 +207,9 @@
         const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
         container.innerHTML = '';
         
-        let count = 0;
         etiquettes.forEach(row => {
           const val = row[columnName];
-          if (val !== undefined && val !== null && String(val).trim() !== "") {
-            count++;
+          if (val) {
             const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
             container.innerHTML += `
               <label class="checkbox-item">
@@ -249,10 +218,6 @@
             `;
           }
         });
-
-        if (count === 0) {
-          container.innerHTML = `<span style="color:#6b7280; font-size:12px;">Aucune étiquette</span>`;
-        }
       };
 
       mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
@@ -337,10 +302,8 @@
 
     async function enregistrerContact(event) {
       event.preventDefault();
-      const debugBox = document.getElementById('debug-box');
-      debugBox.style.display = 'none';
-      debugBox.innerText = '';
 
+      // Date du jour au format YYYY-MM-DD
       const today = new Date().toISOString().split('T')[0];
 
       const recordData = {
@@ -358,6 +321,7 @@
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
         Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
+        // Champs automatiques ajoutés proprement :
         Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
         Date_Saisie: today
       };
@@ -386,8 +350,7 @@
         chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
-        debugBox.style.display = 'block';
-        debugBox.innerText = "❌ ERREUR GRIST :\n" + (err.message || JSON.stringify(err, null, 2));
+        alert("Erreur lors de l'enregistrement : " + (err.message || JSON.stringify(err)));
       }
     }
   </script>

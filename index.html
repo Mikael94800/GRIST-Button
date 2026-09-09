@@ -72,18 +72,18 @@
         </div>
         <div class="field-group">
           <label>Service (Origine)</label>
-          <select id="add-service"><option value="">-- Sélectionner --</option></select>
+          <select id="add-service"><option value="">-- Chargement... --</option></select>
         </div>
       </div>
 
       <div class="grid-2">
         <div class="field-group">
           <label>Statut Juridique</label>
-          <select id="add-statut"><option value="">-- Sélectionner --</option></select>
+          <select id="add-statut"><option value="">-- Chargement... --</option></select>
         </div>
         <div class="field-group">
           <label>Type de structure</label>
-          <select id="add-type-struct"><option value="">-- Sélectionner --</option></select>
+          <select id="add-type-struct"><option value="">-- Chargement... --</option></select>
         </div>
       </div>
 
@@ -168,59 +168,48 @@
       columns: [] 
     });
 
-    // Récupération de l'utilisateur connecté
     grist.onUser((user) => {
       if (user) currentUser = user;
     });
 
-    // Sécurité supplémentaire : si Grist pousse des records via l'événement, on actualise aussi
-    grist.onRecords(function(records) {
-      if (records && records.length > 0) {
-        remplirSelects(records);
-      }
-    });
+    // Convertisseur universel du format brut de grist.docApi.fetchTable
+    function convertirTableEnLignes(rawTable) {
+      if (!rawTable || !rawTable.id) return [];
+      const ids = rawTable.id || [];
+      return ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
+          }
+        }
+        return row;
+      });
+    }
 
-    // Chargement dynamique direct par API (garantit que les listes ne sont jamais figées au démarrage)
+    // Chargement direct des données de la table CONTACTS pour alimenter les listes déroulantes
     async function chargerDonneesContacts() {
       try {
         const rawTable = await grist.docApi.fetchTable('CONTACTS');
-        if (rawTable && rawTable.id) {
-          const ids = rawTable.id || [];
-          const rows = ids.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawTable)) {
-              if (key !== 'id') row[key] = rawTable[key][index];
-            }
-            return row;
-          });
-          remplirSelects(rows);
-        }
+        const rows = convertirTableEnLignes(rawTable);
+        remplirSelects(rows);
       } catch (err) {
-        console.error("Erreur chargement direct CONTACTS :", err);
+        console.error("Erreur chargement CONTACTS :", err);
       }
     }
 
-    // Chargement dynamique de la table ETIQUETTES pour les cases à cocher
+    // Chargement direct de la table ETIQUETTES pour les cases à cocher
     async function chargerEtiquettes() {
       try {
         const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
-        const ids = rawTable.id || [];
-        const etiquettesRows = ids.map((id, index) => {
-          const row = { id };
-          for (const key of Object.keys(rawTable)) {
-            if (key !== 'id') {
-              row[key] = rawTable[key][index];
-            }
-          }
-          return row;
-        });
-        peuplerCasesACocher(etiquettesRows);
+        const rows = convertirTableEnLignes(rawTable);
+        peuplerCasesACocher(rows);
       } catch (err) {
-        console.error("Impossible de charger la table ETIQUETTES :", err);
+        console.error("Erreur chargement ETIQUETTES :", err);
       }
     }
 
-    // Exécution des chargements au démarrage
+    // Lancement immédiat au chargement de la page
     chargerDonneesContacts();
     chargerEtiquettes();
 
@@ -385,7 +374,7 @@
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
         
-        // Actualisation automatique des listes après l'enregistrement
+        // Rafraîchir les listes après l'enregistrement
         chargerDonneesContacts();
         chargerEtiquettes();
       } catch (err) {

@@ -172,49 +172,61 @@
       currentUser = user;
     });
 
+    // Récupération des contacts pour les menus déroulants
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
 
+    // Récupération dynamique de la table ETIQUETTES via les tables du document
     async function chargerEtiquettes() {
-      const debugBox = document.getElementById('debug-box');
-      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes'];
-      
-      for (const nom of nomsPossibles) {
-        try {
-          const rawTable = await grist.docApi.fetchTable(nom);
-          if (rawTable && rawTable.id) {
-            const ids = rawTable.id || [];
-            const etiquettesRows = ids.map((id, index) => {
-              const row = { id };
-              for (const key of Object.keys(rawTable)) {
-                if (key !== 'id') {
-                  row[key] = rawTable[key][index];
-                }
-              }
-              return row;
-            });
-            peuplerCasesACocher(etiquettesRows);
-            return;
-          }
-        } catch (e) {
-          // Continue à tester les autres noms
+      const debugBox =.getElementById('debug-box');
+      try {
+        // Essai avec l'identifiant interne standardisé de Grist pour les tables
+        const tables = ['ETIQUETTES', 'Etiquettes', 'etiquettes', 'Table1'];
+        let rawTable = null;
+        
+        for (const t of tables) {
+          try {
+            rawTable = await grist.docApi.fetchTable(t);
+            if (rawTable && (rawTable.id || rawTable.Listes_Diffusion_Cinema)) break;
+          } catch(ex) {}
         }
-      }
 
-      // Si aucune table n'a été trouvée
-      document.getElementById('group-add-cinema').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
-      document.getElementById('group-add-direction').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
-      document.getElementById('group-add-houdremont').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
-      document.getElementById('group-add-intervenant').innerHTML = '<span style="color:red; font-size:12px;">Table ETIQUETTES introuvable</span>';
-      
-      debugBox.style.display = 'block';
-      debugBox.innerText = "❌ ERREUR : Le script ne parvient pas à trouver la table 'ETIQUETTES'. Vérifiez son nom exact dans Grist.";
+        if (!rawTable) {
+          // Fallback ultime via l'API de sélection de table si disponible
+          const tableList = await grist.docApi.listTables?.();
+          if (tableList) {
+            const match = tableList.find(t => t.toLowerCase().includes('etiquette'));
+            if (match) rawTable = await grist.docApi.fetchTable(match);
+          }
+        }
+
+        if (rawTable) {
+          const ids = rawTable.id || [];
+          const etiquettesRows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') {
+                row[key] = rawTable[key][index];
+              }
+            }
+            return row;
+          });
+          peuplerCasesACocher(etiquettesRows);
+        } else {
+          document.querySelectorAll('.checkbox-group').forEach(el => {
+            el.innerHTML = '<span style="color:red; font-size:12px;">Vérifiez le lien de la table</span>';
+          });
+        }
+      } catch (err) {
+        console.error("Erreur chargement étiquettes:", err);
+      }
     }
 
     chargerEtiquettes();
+    setTimeout(chargerEtiquettes, 1500); // Double sécurité au chargement
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -239,7 +251,7 @@
         });
 
         if (count === 0) {
-          container.innerHTML = `<span style="color:orange; font-size:12px;">Col. "${columnName}" vide ou absente</span>`;
+          container.innerHTML = `<span style="color:#6b7280; font-size:12px;">Aucune étiquette</span>`;
         }
       };
 

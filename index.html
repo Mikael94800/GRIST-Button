@@ -168,36 +168,51 @@
       currentUser = user;
     });
 
-    grist.onRecords(function(records) {
-      if (records && records.length > 0) {
-        remplirSelects(records);
-      }
-    });
+    // Fonction universelle pour convertir le format brut fetchTable en tableau d'objets exploitable
+    function transformerTableBrute(rawTable) {
+      if (!rawTable || !rawTable.id) return [];
+      const ids = rawTable.id || [];
+      return ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
+          }
+        }
+        return row;
+      });
+    }
 
+    // Chargement de la table ETIQUETTES pour les cases à cocher
     async function chargerEtiquettes() {
       try {
         const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
-        if (rawTable && rawTable.id) {
-          const ids = rawTable.id || [];
-          const etiquettesRows = ids.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawTable)) {
-              if (key !== 'id') {
-                row[key] = rawTable[key][index];
-              }
-            }
-            return row;
-          });
-          peuplerCasesACocher(etiquettesRows);
-        }
+        const etiquettesRows = transformerTableBrute(rawTable);
+        peuplerCasesACocher(etiquettesRows);
       } catch (e) {
         console.error("Erreur chargement étiquettes:", e);
       }
     }
 
-    // Double tentative pour garantir le chargement après initialisation complète de Grist
-    setTimeout(chargerEtiquettes, 200);
-    setTimeout(chargerEtiquettes, 1200);
+    // Chargement de la table CONTACTS pour alimenter dynamiquement les menus déroulants (Service, Statut, Type de structure)
+    async function chargerContactsPourSelects() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('CONTACTS');
+        const contactsRows = transformerTableBrute(rawTable);
+        remplirSelects(contactsRows);
+      } catch (e) {
+        console.error("Erreur chargement contacts pour selects:", e);
+      }
+    }
+
+    // Initialisation globale au chargement (avec double sécurité de délai pour laisser Grist s'initialiser)
+    function initialiserDonnees() {
+      chargerEtiquettes();
+      chargerContactsPourSelects();
+    }
+
+    setTimeout(initialiserDonnees, 300);
+    setTimeout(initialiserDonnees, 1500);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -345,7 +360,7 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
-        chargerEtiquettes();
+        initialiserDonnees();
       } catch (err) {
         console.error("Erreur Grist :", err);
         alert("Erreur lors de l'enregistrement : " + (err.message || JSON.stringify(err)));

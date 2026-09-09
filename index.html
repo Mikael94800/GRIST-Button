@@ -127,22 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema"></div>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction"></div>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont"></div>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant"></div>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
         </div>
       </div>
 
@@ -168,20 +168,39 @@
       columns: [] 
     });
 
-    // Récupération de l'utilisateur connecté pour remplir "Cree_Par"
+    // Récupération de l'utilisateur connecté
     grist.onUser((user) => {
-      if (user) {
-        currentUser = user;
-      }
+      if (user) currentUser = user;
     });
 
+    // Sécurité supplémentaire : si Grist pousse des records via l'événement, on actualise aussi
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
 
-    // Fonction robuste pour charger et actualiser dynamiquement la table ETIQUETTES
+    // Chargement dynamique direct par API (garantit que les listes ne sont jamais figées au démarrage)
+    async function chargerDonneesContacts() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('CONTACTS');
+        if (rawTable && rawTable.id) {
+          const ids = rawTable.id || [];
+          const rows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') row[key] = rawTable[key][index];
+            }
+            return row;
+          });
+          remplirSelects(rows);
+        }
+      } catch (err) {
+        console.error("Erreur chargement direct CONTACTS :", err);
+      }
+    }
+
+    // Chargement dynamique de la table ETIQUETTES pour les cases à cocher
     async function chargerEtiquettes() {
       try {
         const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
@@ -201,7 +220,8 @@
       }
     }
 
-    // Chargement initial des étiquettes
+    // Exécution des chargements au démarrage
+    chargerDonneesContacts();
     chargerEtiquettes();
 
     function peuplerCasesACocher(etiquettes) {
@@ -240,9 +260,11 @@
             if (typeof val === 'object' && val !== null) {
               val = val.L || val.name || val.value || "";
             }
-            String(val).split(/[,;]/).forEach(v => { 
-              if (v.trim()) set.add(v.trim()); 
-            });
+            if (val) {
+              String(val).split(/[,;]/).forEach(v => { 
+                if (v.trim()) set.add(v.trim()); 
+              });
+            }
           }
         });
       });
@@ -316,10 +338,7 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
-      // Date du jour au format YYYY-MM-DD (réparée)
       const today = new Date().toISOString().split('T')[0];
-
-      // Nom de l'utilisateur connecté (réparé)
       let nomUtilisateur = "Utilisateur";
       if (currentUser) {
         nomUtilisateur = currentUser.name || currentUser.email || currentUser.username || "Utilisateur";
@@ -366,7 +385,8 @@
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
         
-        // Rafraîchir les étiquettes au cas où elles auraient changé
+        // Actualisation automatique des listes après l'enregistrement
+        chargerDonneesContacts();
         chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);

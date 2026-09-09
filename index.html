@@ -153,6 +153,9 @@
           <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
           <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
           <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
+          <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter Tout publics"> Newsletter Tout publics</label>
+          <label class="checkbox-item"><input type="checkbox" value="Newsletter Jeunes publics"> Newsletter Jeunes publics</label>
         </div>
       </div>
 
@@ -160,7 +163,7 @@
         <label>Diffusion Direction</label>
         <div class="checkbox-group" id="group-direction">
           <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
+          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 2627"> Enseignants élémentaire PEAC 2627</label>
           <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
           <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
           <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
@@ -211,19 +214,19 @@
 
     grist.ready({ requiredAccess: 'full' });
 
-    // Charger les enregistrements de la table Contacts courante
+    // Charger la table Contacts
     grist.onRecords(function(records) {
       allRecords = records;
       remplirListesDeroulantes();
     });
 
-    // Charger aussi la table ETIQUETTES pour faire le lien des IDs de référence
+    // Charger la table ETIQUETTES pour le mapping d'IDs
     async function chargerEtiquettes() {
       try {
         const tableEtiquettes = grist.docApi.getTable('ETIQUETTES');
         etiquettesRecords = await tableEtiquettes.fetch();
       } catch (e) {
-        console.warn("Impossible de charger la table ETIQUETTES automatiquement :", e);
+        console.warn("Chargement différé de la table ETIQUETTES :", e);
       }
     }
     chargerEtiquettes();
@@ -300,14 +303,13 @@
       return valeurBrute;
     }
 
-    // Convertit les textes cochés en un tableau d'IDs Grist en se basant sur la table ETIQUETTES
+    // Récupère les IDs correspondant dans la table ETIQUETTES
     function recupererIdsEtiquettes(idConteneur, nomColonneEtiquettes) {
       const checkboxes = document.querySelectorAll(`#${idConteneur} input[type="checkbox"]:checked`);
       const textesCoches = Array.from(checkboxes).map(cb => cb.value);
       
       if (textesCoches.length === 0) return null;
 
-      // Si la table ETIQUETTES a pu être chargée, on extrait les identifiants (IDs) correspondants
       if (etiquettesRecords && etiquettesRecords.length > 0) {
         const ids = [];
         textesCoches.forEach(texte => {
@@ -319,7 +321,6 @@
         return ids.length > 0 ? ids : null;
       }
 
-      // Fallback si la table n'a pas pu être interrogée
       return null;
     }
 
@@ -350,7 +351,7 @@
         Pays: document.getElementById('input-pays').value || 'France',
         Commentaire_Description: document.getElementById('input-commentaire').value || null,
         
-        // Association propre via les IDs de la table ETIQUETTES pour respecter la Référence multiple
+        // Col IDs stricts réalignés avec Grist
         'Listes_Diffusion_Cinéma': recupererIdsEtiquettes('group-cinema', 'Listes_Diffusion_Cinéma'),
         'Listes_Diffusion_Direction': recupererIdsEtiquettes('group-direction', 'Listes_Diffusion_Direction'),
         'Listes_Diffusion_Houdremont': recupererIdsEtiquettes('group-houdremont', 'Listes_Diffusion_Houdremont'),

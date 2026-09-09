@@ -164,6 +164,394 @@
       columns: [] 
     });
 
+    grist.onUser((user) => {
+      if (user) currentUser = user;
+    });
+
+    // Écoute standard Grist
+    grist.onRecords(function(records) {
+      if (records && records.length > 0) {
+        remplirSelects(records);
+      } else {
+        // Fallback si la table est vide ou non liée : on va chercher directement la table CONTACTS
+        chargerContactsDirect();
+      }
+    });
+
+    async function chargerContactsDirect() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('CONTACTS');
+        if (rawTable && rawTable.id) {
+          const ids = rawTable.id || [];
+          const rows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') row[key] = rawTable[key][index];
+            }
+            return row;
+          });
+          remplirSelects(rows);
+        }
+      } catch (e) {
+        console.error("Erreur fetchTable CONTACTS:", e);
+      }
+    }
+
+    async function chargerEtiquettes() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
+        if (rawTable && rawTable.id) {
+          const ids = rawTable.id || [];
+          const etiquettesRows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') row[key] = rawTable[key][index];
+            }
+            return row;
+          });
+          peuplerCasesACocher(etiquettesRows);
+        }
+      } catch (e) {
+        console.error("Erreur chargement étiquettes:", e);
+      }
+    }
+
+    setTimeout(chargerEtiquettes, 300);
+    setTimeout(chargerEtiquettes, 1500);
+
+    function peuplerCasesACocher(etiquettes) {
+      const mapper = (containerId, columnName) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
+        container.innerHTML = '';
+        
+        etiquettes.forEach(row => {
+          const val = row[columnName];
+          if (val) {
+            const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
+            container.innerHTML += `
+              <label class="checkbox-item">
+                <input type="checkbox" value="${row.id}" ${isChecked}> ${val}
+              </label>
+            `;
+          }
+        });
+      };
+
+      mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
+      mapper('group-add-direction', 'Listes_Diffusion_Direction');
+      mapper('group-add-houdremont', 'Listes_Diffusion_Houdremont');
+      mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
+    }
+
+    function extraireUniques(records, cles) {
+      const set = new Set();
+      records.forEach(r => {
+        cles.forEach(k => {
+          if (r[k] !== undefined && r[k] !== null) {
+            let val = r[k];
+            // Nettoyage si le champ est un objet complexe ou une référence
+            if (typeof val === 'object' && val !== null) {
+              val = val.L || val.name || val.value || "";
+            }
+            if (val && typeof val !== 'object') {
+              String(val).split(/[,;]/).forEach(v => { 
+                if (v.trim()) set.add(v.trim()); 
+              });
+            }
+          }
+        });
+      });
+      return Array.from(set).sort();
+    }
+
+    function remplirSelects(records) {
+      const alimenter = (id, options) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const cur = el.value;
+        el.innerHTML = '<option value="">-- Sélectionner --</option>' + options.map(o => `<option value="${o}">${o}</option>`).join('');
+        el.value = cur;
+      };
+
+      alimenter('add-service', extraireUniques(records, ['Service', 'Service_Origine', 'service']));
+      alimenter('add-statut', extraireUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique', 'statut_juridique']));
+      alimenter('add-type-struct', extraireUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE', 'type_de_structure']));
+    }
+
+    async function chercherVilleParCodePostal(cp) {
+      const clean = cp.trim();
+      if (/^\d{5}$/.test(clean)) {
+        try {
+          const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
+          const data = await res.json();
+          if (data.features && data.features.length > 0) {
+            document.getElementById('add-ville').value = data.features[0].properties.city;
+          }
+        } catch (e) {}
+      }
+    }
+
+    function validerEmail(inputId, msgId, multiple) {
+      const input = document.getElementById(inputId);
+      const msg = document.getElementById(msgId);
+      if (!input || !msg) return true;
+      const val = input.value.trim();
+
+      if (!val) {
+        input.className = '';
+        msg.innerText = '';
+        return true;
+      }
+
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      let valide = multiple 
+        ? val.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => regexEmail.test(e)) 
+        : regexEmail.test(val);
+
+      if (valide) {
+        input.className = 'valid-email';
+        msg.className = 'email-msg success';
+        msg.innerText = '✓ Format e-mail valide';
+      } else {
+        input.className = 'invalid-email';
+        msg.className = 'email-msg error';
+        msg.innerText = '✕ Adresse e-mail invalide';
+      }
+      return true;
+    }
+
+    function recupererCochesIds(containerId) {
+      const cbs = Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map(cb => Number(cb.value));
+      return ['L', ...cbs];
+    }
+
+    async function enregistrerContact(event) {
+      event.preventDefault();
+
+      const today = new Date().toISOString().split('T')[0];
+      let nomUtilisateur = "Utilisateur";
+      if (currentUser) {
+        nomUtilisateur = currentUser.name || currentUser.email || currentUser.username || "Utilisateur";
+      }
+
+      const recordData = {
+        NOM: document.getElementById('add-nom').value.trim(),
+        PRENOM: document.getElementById('add-prenom').value.trim(),
+        NOM_Structure: document.getElementById('add-structure').value.trim(),
+        Fonction_Profession: document.getElementById('add-fonction').value.trim(),
+        Service: document.getElementById('add-service').value || "",
+        STATUT_JURIDIQUE: document.getElementById('add-statut').value || "",
+        TYPE_DE_STRUCTURE_CONTACT: document.getElementById('add-type-struct').value || "",
+        Code_Postal: document.getElementById('add-code-postal').value.trim(),
+        Ville: document.getElementById('add-ville').value.trim(),
+        EMAIL_PRINCIPAL: document.getElementById('add-email-principal').value.trim(),
+        EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
+        Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
+        Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
+        Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
+        Cree_Par: nomUtilisateur,
+        Date_Saisie: today
+      };
+
+      const cinema = recupererCochesIds('group-add-cinema');
+      if (cinema.length > 1) recordData.Listes_Diffusion_Cinema = cinema;
+
+      const direction = recupererCochesIds('group-add-direction');
+      if (direction.length > 1) recordData.Listes_Diffusion_Direction = direction;
+
+      const houdremont = recupererCochesIds('group-add-houdremont');
+      if (houdremont.length > 1) recordData.Listes_Diffusion_Houdremont = houdremont;
+
+      const intervenant = recupererCochesIds('group-add-intervenant');
+      if (intervenant.length > 1) recordData.Listes_Diffusion_Intervenants = intervenant;
+
+      try {
+        await grist.docApi.applyUserActions([
+          ['AddRecord', 'CONTACTS', -1, recordData]
+        ]);
+
+        alert('Nouveau contact enregistré avec succès !');
+        document.getElementById('contact-form').reset();
+        document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
+        document.querySelectorAll('input').forEach(el => el.className = '');
+        chargerEtiquettes();
+        chargerContactsDirect();
+      } catch (err) {
+        console.error("Erreur Grist :", err);
+        alert("Erreur lors de l'enregistrement : " + (err.message || JSON.stringify(err)));
+      }
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Création d'un Contact Grist</title>
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; padding: 16px; background-color: #f8fafc; font-size: 15.5px; }
+
+    .form-card { background: #ffffff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; max-width: 1000px; margin: 0 auto; }
+    .card-title { font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+
+    .section-title { font-size: 16px; font-weight: bold; color: #111827; margin-top: 20px; margin-bottom: 12px; padding-bottom: 4px; border-bottom: 2px solid #3b82f6; display: flex; align-items: center; gap: 8px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 12px; }
+
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-group.full { grid-column: span 2; }
+    
+    label { font-size: 13px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.3px; }
+    
+    input[type="text"], select, textarea { padding: 9.5px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; background-color: #fff; width: 100%; transition: all 0.2s; }
+    input:focus, select:focus, textarea:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15); }
+
+    input.invalid-email { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+    input.valid-email { border-color: #10b981 !important; background-color: #f0fdf4 !important; }
+    .email-msg { font-size: 11.5px; margin-top: 2px; font-weight: 600; min-height: 16px; }
+    .email-msg.error { color: #dc2626; }
+    .email-msg.success { color: #16a34a; }
+
+    .checkbox-group { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 12px; background-color: #f9fafb; display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #374151; cursor: pointer; }
+    .checkbox-item input[type="checkbox"] { transform: scale(1.15); cursor: pointer; }
+
+    .actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
+    .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
+    .btn-submit:hover { background-color: #166534; }
+  </style>
+</head>
+<body>
+
+  <div class="form-card">
+    <div class="card-title">➕ Création d'un nouveau contact</div>
+
+    <form id="contact-form" onsubmit="enregistrerContact(event)">
+      
+      <div class="section-title">👤 Identité & Profession</div>
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Nom *</label>
+          <input type="text" id="add-nom" required placeholder="ex. Dupont">
+        </div>
+        <div class="field-group">
+          <label>Prénom</label>
+          <input type="text" id="add-prenom" placeholder="ex. Marie">
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field-group">
+          <label>Structure</label>
+          <input type="text" id="add-structure" placeholder="Nom de l'établissement">
+        </div>
+        <div class="field-group">
+          <label>Fonction / Profession</label>
+          <input type="text" id="add-fonction" placeholder="ex. Directrice...">
+        </div>
+        <div class="field-group">
+          <label>Service (Origine)</label>
+          <select id="add-service"><option value="">-- Sélectionner --</option></select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Statut Juridique</label>
+          <select id="add-statut"><option value="">-- Sélectionner --</option></select>
+        </div>
+        <div class="field-group">
+          <label>Type de structure</label>
+          <select id="add-type-struct"><option value="">-- Sélectionner --</option></select>
+        </div>
+      </div>
+
+      <div class="section-title">📍 Adresse & Coordonnées</div>
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Code Postal</label>
+          <input type="text" id="add-code-postal" placeholder="ex. 93120" oninput="chercherVilleParCodePostal(this.value)">
+        </div>
+        <div class="field-group">
+          <label>Ville</label>
+          <input type="text" id="add-ville" placeholder="ex. La Courneuve">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Email Principal</label>
+          <input type="text" id="add-email-principal" placeholder="ex. contact@domaine.fr" oninput="validerEmail('add-email-principal', 'msg-email-principal', false)">
+          <div id="msg-email-principal" class="email-msg"></div>
+        </div>
+        <div class="field-group">
+          <label>Emails Secondaires</label>
+          <input type="text" id="add-emails-secondaires" placeholder="Séparés par des virgules" oninput="validerEmail('add-emails-secondaires', 'msg-emails-secondaires', true)">
+          <div id="msg-emails-secondaires" class="email-msg"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Téléphone Principal</label>
+          <input type="text" id="add-tel-principal" placeholder="ex. 01 49 92 60 00">
+        </div>
+        <div class="field-group">
+          <label>Téléphones Secondaires</label>
+          <input type="text" id="add-tels-secondaires" placeholder="ex. 06 00 00 00 00">
+        </div>
+      </div>
+
+      <div class="section-title">📢 Listes de Diffusion</div>
+      <div class="grid-4">
+        <div class="field-group">
+          <label>Diffusion Cinéma</label>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
+        </div>
+
+        <div class="field-group">
+          <label>Diffusion Direction</label>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
+        </div>
+
+        <div class="field-group">
+          <label>Diffusion Houdremont</label>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
+        </div>
+
+        <div class="field-group">
+          <label>Diffusion Intervenant</label>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
+        </div>
+      </div>
+
+      <div class="section-title">📝 Remarques</div>
+      <div class="field-group full">
+        <label>Commentaire / Description</label>
+        <textarea id="add-commentaire" rows="3" placeholder="Informations complémentaires..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn-submit">✔ Valider et enregistrer la fiche</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    grist.ready({ 
+      requiredAccess: 'full',
+      columns: [] 
+    });
+
     // Récupération de l'utilisateur connecté
     grist.onUser((user) => {
       if (user) currentUser = user;

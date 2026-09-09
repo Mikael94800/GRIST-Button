@@ -166,19 +166,25 @@
       columns: [] 
     });
 
-    // Chargement simultané des données CONTACTS (pour les menus déroulants) et ETIQUETTES (pour les cases à cocher)
-    let globalEtiquettesRecords = [];
-
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
 
-    // Lecture spécifique de la table ETIQUETTES pour alimenter dynamiquement les listes de diffusion
-    grist.docApi.fetchTable('ETIQUETTES').then(etiquettes => {
-      globalEtiquettesRecords = etiquettes;
-      peuplerCasesACocher(etiquettes);
+    // Chargement de la table ETIQUETTES convertie en tableau de lignes
+    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
+      const ids = rawTable.id || [];
+      const etiquettesRows = ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
+          }
+        }
+        return row;
+      });
+      peuplerCasesACocher(etiquettesRows);
     }).catch(err => {
       console.error("Impossible de charger la table ETIQUETTES :", err);
     });
@@ -188,9 +194,7 @@
         const container = document.getElementById(containerId);
         if (!container) return;
         
-        // Sauvegarde des IDs déjà cochés s'il y en a
         const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
-        
         container.innerHTML = '';
         
         etiquettes.forEach(row => {
@@ -228,6 +232,7 @@
     function remplirSelects(records) {
       const alimenter = (id, options) => {
         const el = document.getElementById(id);
+        if (!el) return;
         const cur = el.value;
         el.innerHTML = '<option value="">-- Sélectionner --</option>' + options.map(o => `<option value="${o}">${o}</option>`).join('');
         el.value = cur;
@@ -321,7 +326,6 @@
       if (intervenant.length > 1) recordData.Listes_Diffusion_Intervenants = intervenant;
 
       try {
-        console.log("Données envoyées à Grist :", recordData);
         await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', -1, recordData]
         ]);

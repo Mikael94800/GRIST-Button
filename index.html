@@ -202,6 +202,8 @@
     }
 
     chargerEtiquettes();
+    // Sécurité supplémentaire : recharge les listes toutes les secondes si elles tardent à s'afficher
+    setTimeout(chargerEtiquettes, 1000);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -310,9 +312,7 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
-      // Si vous avez renommé vos colonnes 'CREE_PAR' et 'DATE_SAISIE_CONTACTS' 
-      // en noms simples sans formules, décommentez les deux lignes ci-dessous :
-      // const today = new Date().toISOString().split('T')[0]; // Format AAAA-MM-JJ
+      const today = new Date().toISOString().split('T')[0];
 
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
@@ -329,8 +329,8 @@
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
         Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
-        // Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
-        // Date_Saisie: today
+        Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
+        Date_Saisie: today
       };
 
       const cinema = recupererCochesIds('group-add-cinema');
@@ -354,6 +354,7 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
+        chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
         debugBox.style.display = 'block';

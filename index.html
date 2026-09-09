@@ -127,48 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema">
-            <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
-          </div>
+          <div class="checkbox-group" id="group-add-cinema"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction">
-            <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
-            <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-            <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
-            <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-            <label class="checkbox-item"><input type="checkbox" value="DAC_93"> DAC_93</label>
-          </div>
+          <div class="checkbox-group" id="group-add-direction"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont">
-            <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
-            <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
-            <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
-            <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-          </div>
+          <div class="checkbox-group" id="group-add-houdremont"></div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant">
-            <label class="checkbox-item"><input type="checkbox" value="Cinéma"> Cinéma</label>
-            <label class="checkbox-item"><input type="checkbox" value="PEAC 26-27"> PEAC 26-27</label>
-            <label class="checkbox-item"><input type="checkbox" value="Patrimoine"> Patrimoine</label>
-            <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-            <label class="checkbox-item"><input type="checkbox" value="Direction"> Direction</label>
-            <label class="checkbox-item"><input type="checkbox" value="Arts plastiques"> Arts plastiques</label>
-          </div>
+          <div class="checkbox-group" id="group-add-intervenant"></div>
         </div>
       </div>
 
@@ -187,13 +161,56 @@
   </div>
 
   <script>
-    grist.ready({ requiredAccess: 'full' });
+    grist.ready({ 
+      requiredAccess: 'full',
+      columns: [] 
+    });
+
+    // Chargement simultané des données CONTACTS (pour les menus déroulants) et ETIQUETTES (pour les cases à cocher)
+    let globalEtiquettesRecords = [];
 
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
+
+    // Lecture spécifique de la table ETIQUETTES pour alimenter dynamiquement les listes de diffusion
+    grist.docApi.fetchTable('ETIQUETTES').then(etiquettes => {
+      globalEtiquettesRecords = etiquettes;
+      peuplerCasesACocher(etiquettes);
+    }).catch(err => {
+      console.error("Impossible de charger la table ETIQUETTES :", err);
+    });
+
+    function peuplerCasesACocher(etiquettes) {
+      const mapper = (containerId, columnName) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        // Sauvegarde des IDs déjà cochés s'il y en a
+        const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
+        
+        container.innerHTML = '';
+        
+        etiquettes.forEach(row => {
+          const val = row[columnName];
+          if (val) {
+            const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
+            container.innerHTML += `
+              <label class="checkbox-item">
+                <input type="checkbox" value="${row.id}" ${isChecked}> ${val}
+              </label>
+            `;
+          }
+        });
+      };
+
+      mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
+      mapper('group-add-direction', 'Listes_Diffusion_Direction');
+      mapper('group-add-houdremont', 'Listes_Diffusion_Houdremont');
+      mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
+    }
 
     function extraireUniques(records, cles) {
       const set = new Set();
@@ -263,8 +280,8 @@
       return true;
     }
 
-    function recupererCoches(containerId) {
-      const cbs = Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map(cb => cb.value);
+    function recupererCochesIds(containerId) {
+      const cbs = Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map(cb => Number(cb.value));
       return ['L', ...cbs];
     }
 
@@ -291,21 +308,17 @@
         Commentaire_Description: document.getElementById('add-commentaire').value.trim()
       };
 
-      const cinema = recupererCoches('group-add-cinema');
+      const cinema = recupererCochesIds('group-add-cinema');
       if (cinema.length > 1) recordData.Listes_Diffusion_Cinema = cinema;
 
-      const direction = recupererCoches('group-add-direction');
+      const direction = recupererCochesIds('group-add-direction');
       if (direction.length > 1) recordData.Listes_Diffusion_Direction = direction;
 
-      const houdremont = recupererCoches('group-add-houdremont');
+      const houdremont = recupererCochesIds('group-add-houdremont');
       if (houdremont.length > 1) recordData.Listes_Diffusion_Houdremont = houdremont;
 
-      // Teste dynamiquement les noms possibles pour la colonne des intervenants (avec 's' ou nom court)
-      const intervenant = recupererCoches('group-add-intervenant');
-      if (intervenant.length > 1) {
-        recordData.Listes_Diffusion_Intervenants = intervenant; // Avec un 's'
-        recordData.Diffusion_Intervenant = intervenant;         // Autre variante possible
-      }
+      const intervenant = recupererCochesIds('group-add-intervenant');
+      if (intervenant.length > 1) recordData.Listes_Diffusion_Intervenants = intervenant;
 
       try {
         console.log("Données envoyées à Grist :", recordData);

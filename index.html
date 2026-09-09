@@ -39,7 +39,7 @@
     .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-submit:hover { background-color: #166534; }
 
-    #debug-box { margin-top: 20px; padding: 12px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
+    #debug-box { margin-top: 20px; padding: 12px; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; color: #b45309; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
   </style>
 </head>
 <body>
@@ -127,22 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema"></div>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction"></div>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont"></div>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant"></div>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
         </div>
       </div>
 
@@ -161,9 +161,15 @@
   </div>
 
   <script>
+    let currentUser = null;
+
     grist.ready({ 
       requiredAccess: 'full',
       columns: [] 
+    });
+
+    grist.onUser((user) => {
+      currentUser = user;
     });
 
     grist.onRecords(function(records) {
@@ -172,22 +178,42 @@
       }
     });
 
-    // Chargement de la table ETIQUETTES convertie en tableau de lignes
-    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
-      const ids = rawTable.id || [];
-      const etiquettesRows = ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
+    async function chargerEtiquettes() {
+      const debugBox = document.getElementById('debug-box');
+      const nomsPossibles = ['ETIQUETTES', 'Etiquettes', 'etiquettes', 'Table1'];
+      let succes = false;
+
+      for (const nom of nomsPossibles) {
+        try {
+          const rawTable = await grist.docApi.fetchTable(nom);
+          if (rawTable && rawTable.id) {
+            const ids = rawTable.id || [];
+            const etiquettesRows = ids.map((id, index) => {
+              const row = { id };
+              for (const key of Object.keys(rawTable)) {
+                if (key !== 'id') {
+                  row[key] = rawTable[key][index];
+                }
+              }
+              return row;
+            });
+            peuplerCasesACocher(etiquettesRows);
+            succes = true;
+            break;
           }
+        } catch (e) {
+          console.warn(`Tentative échouée pour la table ${nom}:`, e);
         }
-        return row;
-      });
-      peuplerCasesACocher(etiquettesRows);
-    }).catch(err => {
-      console.error("Impossible de charger la table ETIQUETTES :", err);
-    });
+      }
+
+      if (!succes) {
+        debugBox.style.display = 'block';
+        debugBox.innerText = "⚠️ Diagnostic : Impossible de charger la table 'ETIQUETTES'. Assurez-vous que le widget a bien le niveau d'accès 'Plein (Full)' dans les paramètres de configuration du widget Grist sur la droite.";
+      }
+    }
+
+    chargerEtiquettes();
+    setTimeout(chargerEtiquettes, 1500);
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -197,9 +223,11 @@
         const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
         container.innerHTML = '';
         
+        let count = 0;
         etiquettes.forEach(row => {
           const val = row[columnName];
           if (val) {
+            count++;
             const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
             container.innerHTML += `
               <label class="checkbox-item">
@@ -208,6 +236,10 @@
             `;
           }
         });
+
+        if (count === 0) {
+          container.innerHTML = `<span style="color:#b45309; font-size:12px;">Col. "${columnName}" vide</span>`;
+        }
       };
 
       mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
@@ -247,12 +279,12 @@
       const clean = cp.trim();
       if (/^\d{5}$/.test(clean)) {
         try {
-          const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
+          const res = __fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
           const data = await res.json();
           if (data.features && data.features.length > 0) {
             document.getElementById('add-ville').value = data.features[0].properties.city;
           }
-        } catch (e) { console.error(e); }
+        } catch (e) {}
       }
     }
 
@@ -296,6 +328,8 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
+      const today = new Date().toISOString().split('T')[0];
+
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -310,7 +344,9 @@
         EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
-        Commentaire_Description: document.getElementById('add-commentaire').value.trim()
+        Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
+        Cree_Par: (currentUser && currentUser.name) ? currentUser.name : "Utilisateur",
+        Date_Saisie: today
       };
 
       const cinema = recupererCochesIds('group-add-cinema');
@@ -334,6 +370,7 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
+        chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
         debugBox.style.display = 'block';

@@ -308,6 +308,7 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
+      // On laisse Grist gérer automatiquement 'CREE_PAR' et 'DATE_SAISIE_CONTACTS' via leurs formules d'initialisation
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),

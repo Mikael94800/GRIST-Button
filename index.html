@@ -339,8 +339,14 @@
       setFieldIfExists(KEYS.TYPE_STRUCT, document.getElementById('create-type-structure').value);
       setFieldIfExists(KEYS.FONCTION, document.getElementById('create-fonction').value.trim());
       setFieldIfExists(KEYS.DOMAINE, document.getElementById('create-domaine').value);
-      setFieldIfExists(KEYS.VILLE, document.getElementById('create-ville').value.trim());
-      setFieldIfExists(KEYS.CODE_POSTAL, document.getElementById('create-cp').value.trim());
+    const villeSaisie = document.getElementById('create-ville').value.trim();
+// Si la ville a été saisie à la main, on l'envoie. 
+// Sinon, on ne l'envoie pas pour laisser la formule d'initialisation de Grist trouver la ville automatiquement à partir du code postal.
+if (villeSaisie) {
+  setFieldIfExists(KEYS.VILLE, villeSaisie);
+}
+
+setFieldIfExists(KEYS.CODE_POSTAL, document.getElementById('create-cp').value.trim());
       setFieldIfExists(KEYS.EMAIL_PRINCIPAL, document.getElementById('create-email').value.trim());
       setFieldIfExists(KEYS.EMAIL_SECONDAIRE, document.getElementById('create-email-sec').value.trim());
       setFieldIfExists(KEYS.TEL_PRINCIPAL, document.getElementById('create-tel').value.trim());

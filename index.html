@@ -172,38 +172,46 @@
       if (user) currentUser = user;
     });
 
-    // 1. Écouteur principal sur CONTACTS pour alimenter les selects dynamiquement
-    grist.onRecords(function(records) {
-      if (records && records.length > 0) {
-        remplirSelects(records);
-      }
-    });
-
-    // 2. Écouteur sur ETIQUETTES pour les cases à cocher dynamiques
-    if (grist.onRecord) {
-      // Si configuré avec une table liée, ou utilisation de table interne
+    // Convertisseur universel des tables brutes Grist
+    function convertirTableEnLignes(rawTable) {
+      if (!rawTable || !rawTable.id) return [];
+      const ids = rawTable.id || [];
+      return ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
+          }
+        }
+        return row;
+      });
     }
-    
-    // Chargement dynamique des étiquettes via l'API de table dédiée
+
+    // Chargement de CONTACTS
+    async function chargerDonneesContacts() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('CONTACTS');
+        const rows = convertirTableEnLignes(rawTable);
+        remplirSelects(rows);
+      } catch (err) {
+        console.error("Erreur chargement CONTACTS :", err);
+      }
+    }
+
+    // Chargement de ETIQUETTES avec gestion d'erreur visuelle
     async function chargerEtiquettes() {
       try {
         const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
-        if (rawTable && rawTable.id) {
-          const ids = rawTable.id || [];
-          const rows = ids.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawTable)) {
-              if (key !== 'id') row[key] = rawTable[key][index];
-            }
-            return row;
-          });
-          peuplerCasesACocher(rows);
-        }
+        const rows = convertirTableEnLignes(rawTable);
+        peuplerCasesACocher(rows);
       } catch (err) {
         console.error("Erreur chargement ETIQUETTES :", err);
+        document.getElementById('debug-box').style.display = 'block';
+        document.getElementById('debug-box').innerText = "Erreur ETIQUETTES : " + err.message;
       }
     }
 
+    chargerDonneesContacts();
     chargerEtiquettes();
 
     function peuplerCasesACocher(etiquettes) {
@@ -216,7 +224,7 @@
         
         etiquettes.forEach(row => {
           const val = row[columnName];
-          if (val) {
+          if (val !== undefined && val !== null && val !== "") {
             const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
             container.innerHTML += `
               <label class="checkbox-item">
@@ -225,12 +233,16 @@
             `;
           }
         });
+        if (container.innerHTML === '') {
+          container.innerHTML = `<span style="font-size:12px; color:#ef4444;">Col. introuvable (${columnName})</span>`;
+        }
       };
 
       mapper('group-add-cinema', 'Listes_Diffusion_Cinema');
       mapper('group-add-direction', 'Listes_Diffusion_Direction');
       mapper('group-add-houdremont', 'Listes_Diffusion_Houdremont');
-      mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
+      // On teste ici les variantes les plus probables si le nom a changé dans la version actuelle
+      mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants'); 
     }
 
     function extraireUniques(records, cles) {

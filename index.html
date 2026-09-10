@@ -111,53 +111,27 @@
       </div>
     </div>
 
-    <!-- Listes de diffusion (Checkboxes) -->
+    <!-- Listes de diffusion (Checkboxes générées dynamiquement) -->
     <div style="margin-top: 14px; margin-bottom: 6px;"><label>Listes de Diffusion</label></div>
     <div class="checkboxes-container">
       <div class="field-group">
         <label style="font-size: 12px; color: #6b7280;">Diffusion Cinéma</label>
-        <div class="checkbox-group" id="group-cinema">
-          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
-        </div>
+        <div class="checkbox-group" id="group-cinema"></div>
       </div>
 
       <div class="field-group">
         <label style="font-size: 12px; color: #6b7280;">Diffusion Direction</label>
-        <div class="checkbox-group" id="group-direction">
-          <label class="checkbox-item"><input type="checkbox" value="Enseignants maternelle PEAC 26-27"> Enseignants maternelle PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignants élémentaire PEAC 26-27"> Enseignants élémentaire PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-          <label class="checkbox-item"><input type="checkbox" value="Patrimoine & Archives"> Patrimoine & Archives</label>
-          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-          <label class="checkbox-item"><input type="checkbox" value="DAC_93"> DAC_93</label>
-        </div>
+        <div class="checkbox-group" id="group-direction"></div>
       </div>
 
       <div class="field-group">
         <label style="font-size: 12px; color: #6b7280;">Diffusion Houdremont</label>
-        <div class="checkbox-group" id="group-houdremont">
-          <label class="checkbox-item"><input type="checkbox" value="Crèche"> Crèche</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enfance & Jeunesse"> Enfance & Jeunesse</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant élémentaire"> Enseignant élémentaire</label>
-          <label class="checkbox-item"><input type="checkbox" value="Enseignant maternelle"> Enseignant maternelle</label>
-          <label class="checkbox-item"><input type="checkbox" value="Habitants"> Habitants</label>
-          <label class="checkbox-item"><input type="checkbox" value="Newsletter"> Newsletter</label>
-        </div>
+        <div class="checkbox-group" id="group-houdremont"></div>
       </div>
 
       <div class="field-group">
         <label style="font-size: 12px; color: #6b7280;">Diffusion Intervenant</label>
-        <div class="checkbox-group" id="group-intervenant">
-          <label class="checkbox-item"><input type="checkbox" value="Cinéma"> Cinéma</label>
-          <label class="checkbox-item"><input type="checkbox" value="PEAC 26-27"> PEAC 26-27</label>
-          <label class="checkbox-item"><input type="checkbox" value="Patrimoine"> Patrimoine</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts visuels"> Arts visuels</label>
-          <label class="checkbox-item"><input type="checkbox" value="Direction"> Direction</label>
-          <label class="checkbox-item"><input type="checkbox" value="Arts plastiques"> Arts plastiques</label>
-        </div>
+        <div class="checkbox-group" id="group-intervenant"></div>
       </div>
     </div>
 
@@ -175,9 +149,9 @@
 
   <script>
     let allRecords = [];
-    let referenceTables = { structures: [], services: [], statuts: [] };
+    let referenceTables = { structures: [], services: [], statuts: [], etiquettes: null };
 
-// Dictionnaire des clés mis à jour avec le bon nom de colonne (avec un 's')
+    // Dictionnaire des clés mis à jour
     const KEYS = {
       NOM: ['NOM', 'Nom'],
       PRENOM: ['PRENOM', 'Prénom', 'Prenom'],
@@ -204,6 +178,7 @@
       allRecords = records;
       await chargerTablesDeReference();
       remplirListesDeroulantes();
+      peuplerCheckboxesDiffusion();
     });
 
     async function chargerTablesDeReference() {
@@ -213,10 +188,17 @@
         };
         const tStruct = await fetchTable('STRUCTURES') || await fetchTable('Structures');
         if(tStruct) referenceTables.structures = tStruct.Nom || tStruct.NOM || tStruct.Name || [];
+        
         const tServ = await fetchTable('SERVICES') || await fetchTable('Services');
         if(tServ) referenceTables.services = tServ.Nom || tServ.Service || [];
+        
         const tStat = await fetchTable('STATUTS') || await fetchTable('Statuts');
         if(tStat) referenceTables.statuts = tStat.Nom || tStat.Statut || [];
+
+        // Récupération de la table ETIQUETTES pour les listes dynamiques
+        const tEtiquettes = await fetchTable('ETIQUETTES') || await fetchTable('Etiquettes');
+        if(tEtiquettes) referenceTables.etiquettes = tEtiquettes;
+
       } catch(e) { console.warn("Tables de référence non chargées :", e); }
     }
 
@@ -263,6 +245,36 @@
       alimenter('create-domaine', domainesList);
     }
 
+    function peuplerCheckboxesDiffusion() {
+      if (!referenceTables.etiquettes) return;
+
+      const genererGroupe = (clesPossibles, containerId) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+
+        const colName = clesPossibles.find(k => referenceTables.etiquettes[k] !== undefined);
+        if (!colName) return;
+
+        const valeurs = referenceTables.etiquettes[colName];
+        if (Array.isArray(valeurs)) {
+          valeurs.forEach(val => {
+            if (val !== null && val !== undefined && String(val).trim() !== '') {
+              const label = document.createElement('label');
+              label.className = 'checkbox-item';
+              label.innerHTML = `<input type="checkbox" value="${val}"> ${val}`;
+              container.appendChild(label);
+            }
+          });
+        }
+      };
+
+      genererGroupe(KEYS.DIFF_CINEMA, 'group-cinema');
+      genererGroupe(KEYS.DIFF_DIRECTION, 'group-direction');
+      genererGroupe(KEYS.DIFF_HOUDREMONT, 'group-houdremont');
+      genererGroupe(KEYS.DIFF_INTERVENANT, 'group-intervenant');
+    }
+
     function verifierEmailInput(input) {
       const val = input.value.trim();
       const msg = document.getElementById('email-msg');
@@ -293,12 +305,10 @@
         return;
       }
 
-      // Construction dynamique de l'objet en respectant les noms de colonnes Grist réels détectés
       const nouveauContact = {};
 
       const setFieldIfExists = (keys, value) => {
         if (!value) return;
-        // On cherche si l'une des clés du dictionnaire existe déjà dans les enregistrements existants, sinon on prend la première par défaut
         let targetKey = keys[0];
         if (allRecords.length > 0) {
           const found = keys.find(k => k in allRecords[0]);
@@ -321,7 +331,6 @@
       setFieldIfExists(KEYS.TEL_PRINCIPAL, document.getElementById('create-tel').value.trim());
       setFieldIfExists(KEYS.COMMENTAIRE, document.getElementById('create-commentaire').value.trim());
 
-      // Récupération des checkboxes
       const getCheckedValues = (selector) => {
         return Array.from(document.querySelectorAll(`${selector} input:checked`)).map(cb => cb.value).join(', ');
       };
@@ -334,7 +343,6 @@
       try {
         document.getElementById('form-status').innerText = "Enregistrement...";
         
-        // Insertion dans la table principale (Grist détecte automatiquement la table active ou 'CONTACTS')
         await grist.docApi.applyUserActions([
           ['AddRecord', 'CONTACTS', null, nouveauContact]
         ]);

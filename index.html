@@ -127,22 +127,22 @@
       <div class="grid-4">
         <div class="field-group">
           <label>Diffusion Cinéma</label>
-          <div class="checkbox-group" id="group-add-cinema"></div>
+          <div class="checkbox-group" id="group-add-cinema">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Direction</label>
-          <div class="checkbox-group" id="group-add-direction"></div>
+          <div class="checkbox-group" id="group-add-direction">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Houdremont</label>
-          <div class="checkbox-group" id="group-add-houdremont"></div>
+          <div class="checkbox-group" id="group-add-houdremont">Chargement...</div>
         </div>
 
         <div class="field-group">
           <label>Diffusion Intervenant</label>
-          <div class="checkbox-group" id="group-add-intervenant"></div>
+          <div class="checkbox-group" id="group-add-intervenant">Chargement...</div>
         </div>
       </div>
 
@@ -161,33 +161,50 @@
   </div>
 
   <script>
+    let currentUser = null;
+
     grist.ready({ 
       requiredAccess: 'full',
       columns: [] 
     });
 
+    grist.onUser((user) => {
+      if (user) currentUser = user;
+    });
+
+    // 1. Écouteur principal sur CONTACTS pour alimenter les selects dynamiquement
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
         remplirSelects(records);
       }
     });
 
-    // Chargement de la table ETIQUETTES convertie en tableau de lignes
-    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
-      const ids = rawTable.id || [];
-      const etiquettesRows = ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
-          }
+    // 2. Écouteur sur ETIQUETTES pour les cases à cocher dynamiques
+    if (grist.onRecord) {
+      // Si configuré avec une table liée, ou utilisation de table interne
+    }
+    
+    // Chargement dynamique des étiquettes via l'API de table dédiée
+    async function chargerEtiquettes() {
+      try {
+        const rawTable = await grist.docApi.fetchTable('ETIQUETTES');
+        if (rawTable && rawTable.id) {
+          const ids = rawTable.id || [];
+          const rows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') row[key] = rawTable[key][index];
+            }
+            return row;
+          });
+          peuplerCasesACocher(rows);
         }
-        return row;
-      });
-      peuplerCasesACocher(etiquettesRows);
-    }).catch(err => {
-      console.error("Impossible de charger la table ETIQUETTES :", err);
-    });
+      } catch (err) {
+        console.error("Erreur chargement ETIQUETTES :", err);
+      }
+    }
+
+    chargerEtiquettes();
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -220,9 +237,16 @@
       const set = new Set();
       records.forEach(r => {
         cles.forEach(k => {
-          if (r[k]) {
-            const val = String(r[k].L || r[k]);
-            val.split(/[,;]/).forEach(v => { if (v.trim()) set.add(v.trim()); });
+          if (r[k] !== undefined && r[k] !== null) {
+            let val = r[k];
+            if (typeof val === 'object' && val !== null) {
+              val = val.L || val.name || val.value || "";
+            }
+            if (val) {
+              String(val).split(/[,;]/).forEach(v => { 
+                if (v.trim()) set.add(v.trim()); 
+              });
+            }
           }
         });
       });
@@ -238,9 +262,9 @@
         el.value = cur;
       };
 
-      alimenter('add-service', extraireUniques(records, ['Service', 'Service_Origine']));
-      alimenter('add-statut', extraireUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique']));
-      alimenter('add-type-struct', extraireUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE']));
+      alimenter('add-service', extraireUniques(records, ['Service', 'Service_Origine', 'service']));
+      alimenter('add-statut', extraireUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique', 'statut_juridique']));
+      alimenter('add-type-struct', extraireUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE', 'type_de_structure']));
     }
 
     async function chercherVilleParCodePostal(cp) {
@@ -296,6 +320,12 @@
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
+      const today = new Date().toISOString().split('T')[0];
+      let nomUtilisateur = "Utilisateur";
+      if (currentUser) {
+        nomUtilisateur = currentUser.name || currentUser.email || currentUser.username || "Utilisateur";
+      }
+
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -310,7 +340,9 @@
         EMAILS_SECONDAIRES: document.getElementById('add-emails-secondaires').value.trim(),
         Telephone_Principal: document.getElementById('add-tel-principal').value.trim(),
         Telephones_Secondaires: document.getElementById('add-tels-secondaires').value.trim(),
-        Commentaire_Description: document.getElementById('add-commentaire').value.trim()
+        Commentaire_Description: document.getElementById('add-commentaire').value.trim(),
+        Cree_Par: nomUtilisateur,
+        Date_Saisie: today
       };
 
       const cinema = recupererCochesIds('group-add-cinema');
@@ -334,6 +366,8 @@
         document.getElementById('contact-form').reset();
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
+        
+        chargerEtiquettes();
       } catch (err) {
         console.error("Erreur Grist :", err);
         debugBox.style.display = 'block';

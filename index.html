@@ -165,7 +165,7 @@
 
   <script>
     let allRecords = [];
-    let referenceTables = { services: [], statuts: [], etiquettes: null, communes: [] };
+    let referenceTables = { services: [], statuts: [], etiquettes: null, communes: null };
 
     const KEYS = {
       NOM: ['NOM', 'Nom'],
@@ -213,8 +213,8 @@
         const tEtiquettes = await fetchTable('ETIQUETTES') || await fetchTable('Etiquettes');
         if(tEtiquettes) referenceTables.etiquettes = tEtiquettes;
 
-        // Recherche dynamique de la table des communes
-        const tCommunes = await fetchTable('COMMUNES') || await fetchTable('Communes') || await fetchTable('CODES_POSTAUX') || await fetchTable('Codes_Postaux');
+        // Chargement spécifique de votre table COMMUNES_FRANCE_2026
+        const tCommunes = await fetchTable('COMMUNES_FRANCE_2026') || await fetchTable('communes_france_2026');
         if (tCommunes) {
           referenceTables.communes = tCommunes;
         }
@@ -222,26 +222,25 @@
       } catch(e) { console.warn("Tables de référence non chargées :", e); }
     }
 
-    // Recherche locale de la ville dans la table Grist "COMMUNES"
+    // Recherche de la ville correspondant au Code Postal dans COMMUNES_FRANCE_2026
     function rechercherVilleDansGrist(cpSaisi) {
       const cpClean = String(cpSaisi).trim();
       if (!cpClean || !referenceTables.communes) return;
 
       const tCom = referenceTables.communes;
-      
-      // Trouver automatiquement le nom des colonnes CP et Ville dans la table Communes
-      const keys = Object.keys(tCom);
-      const colCP = keys.find(k => ['Code_Postal', 'CodePostal', 'CP', 'Code_postal', 'code_postal'].includes(k));
-      const colVille = keys.find(k => ['Ville', 'Nom_Commune', 'Commune', 'VILLE', 'Nom_ville'].includes(k));
-
-      if (!colCP || !colVille) return;
-
-      const listeCP = tCom[colCP];
-      const listeVilles = tCom[colVille];
+      const listeCP = tCom.code_postal;
+      const listeVilles = tCom.nom_commune;
 
       if (Array.isArray(listeCP) && Array.isArray(listeVilles)) {
-        // Trouver l'index correspondant au Code Postal
-        const index = listeCP.findIndex(cp => String(cp).trim() === cpClean);
+        // Recherche si le CP exact est égal, ou s'il fait partie d'une liste séparée par des virgules
+        const index = listeCP.findIndex(cp => {
+          if (!cp) return false;
+          const cpStr = String(cp).trim();
+          if (cpStr === cpClean) return true;
+          // Gestion des CP multiples : ex "01500, 01501"
+          return cpStr.split(/[,;\s]+/).includes(cpClean);
+        });
+
         if (index !== -1 && listeVilles[index]) {
           document.getElementById('create-ville').value = listeVilles[index];
         }

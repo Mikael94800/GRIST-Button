@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Ligne 3 : Fonction, Domaine, Ville / CP -->
+    <!-- Ligne 3 : Fonction, Domaine, CP -->
     <div class="form-row">
       <div class="field-group">
         <label>Fonction / Profession</label>
@@ -89,12 +89,12 @@
         <select id="create-domaine"><option value="">-- Sélectionner --</option></select>
       </div>
       <div class="field-group">
-        <label>Ville</label>
-        <input type="text" id="create-ville" placeholder="Ville...">
+        <label>Code Postal</label>
+        <input type="text" id="create-cp" placeholder="Code postal..." oninput="rechercherVilleDansGrist(this.value)">
       </div>
     </div>
 
-    <!-- Ligne 4 : Contacts Principaux (Email, Téléphone & CP) -->
+    <!-- Ligne 4 : Contacts Principaux (Email, Téléphone & Ville) -->
     <div class="form-row">
       <div class="field-group">
         <label>Email Principal</label>
@@ -106,8 +106,8 @@
         <input type="text" id="create-tel" placeholder="06 00 00 00 00...">
       </div>
       <div class="field-group">
-        <label>Code Postal</label>
-        <input type="text" id="create-cp" placeholder="Code postal...">
+        <label>Ville</label>
+        <input type="text" id="create-ville" placeholder="Ville...">
       </div>
     </div>
 
@@ -123,11 +123,11 @@
         <input type="text" id="create-tel-sec" placeholder="Téléphone secondaire...">
       </div>
       <div class="field-group">
-        <!-- Espace vide pour garder l'alignement des colonnes propre -->
+        <!-- Espace vide pour l'alignement -->
       </div>
     </div>
 
-    <!-- Listes de diffusion (Checkboxes générées dynamiquement) -->
+    <!-- Listes de diffusion -->
     <div style="margin-top: 14px; margin-bottom: 6px;"><label>Listes de Diffusion</label></div>
     <div class="checkboxes-container">
       <div class="field-group">
@@ -165,7 +165,7 @@
 
   <script>
     let allRecords = [];
-    let referenceTables = { services: [], statuts: [], etiquettes: null };
+    let referenceTables = { services: [], statuts: [], etiquettes: null, communes: [] };
 
     const KEYS = {
       NOM: ['NOM', 'Nom'],
@@ -213,7 +213,39 @@
         const tEtiquettes = await fetchTable('ETIQUETTES') || await fetchTable('Etiquettes');
         if(tEtiquettes) referenceTables.etiquettes = tEtiquettes;
 
+        // Recherche dynamique de la table des communes
+        const tCommunes = await fetchTable('COMMUNES') || await fetchTable('Communes') || await fetchTable('CODES_POSTAUX') || await fetchTable('Codes_Postaux');
+        if (tCommunes) {
+          referenceTables.communes = tCommunes;
+        }
+
       } catch(e) { console.warn("Tables de référence non chargées :", e); }
+    }
+
+    // Recherche locale de la ville dans la table Grist "COMMUNES"
+    function rechercherVilleDansGrist(cpSaisi) {
+      const cpClean = String(cpSaisi).trim();
+      if (!cpClean || !referenceTables.communes) return;
+
+      const tCom = referenceTables.communes;
+      
+      // Trouver automatiquement le nom des colonnes CP et Ville dans la table Communes
+      const keys = Object.keys(tCom);
+      const colCP = keys.find(k => ['Code_Postal', 'CodePostal', 'CP', 'Code_postal', 'code_postal'].includes(k));
+      const colVille = keys.find(k => ['Ville', 'Nom_Commune', 'Commune', 'VILLE', 'Nom_ville'].includes(k));
+
+      if (!colCP || !colVille) return;
+
+      const listeCP = tCom[colCP];
+      const listeVilles = tCom[colVille];
+
+      if (Array.isArray(listeCP) && Array.isArray(listeVilles)) {
+        // Trouver l'index correspondant au Code Postal
+        const index = listeCP.findIndex(cp => String(cp).trim() === cpClean);
+        if (index !== -1 && listeVilles[index]) {
+          document.getElementById('create-ville').value = listeVilles[index];
+        }
+      }
     }
 
     function normaliserChaine(valeur) {
@@ -337,14 +369,8 @@
       setFieldIfExists(KEYS.TYPE_STRUCT, document.getElementById('create-type-structure').value);
       setFieldIfExists(KEYS.FONCTION, document.getElementById('create-fonction').value.trim());
       setFieldIfExists(KEYS.DOMAINE, document.getElementById('create-domaine').value);
-
-      // Gestion prioritaire de la Ville : si vide, on n'envoie rien pour déclencher l'auto-remplissage Grist
-      const villeSaisie = document.getElementById('create-ville').value.trim();
-      if (villeSaisie) {
-        setFieldIfExists(KEYS.VILLE, villeSaisie);
-      }
-
       setFieldIfExists(KEYS.CODE_POSTAL, document.getElementById('create-cp').value.trim());
+      setFieldIfExists(KEYS.VILLE, document.getElementById('create-ville').value.trim());
       setFieldIfExists(KEYS.EMAIL_PRINCIPAL, document.getElementById('create-email').value.trim());
       setFieldIfExists(KEYS.EMAIL_SECONDAIRE, document.getElementById('create-email-sec').value.trim());
       setFieldIfExists(KEYS.TEL_PRINCIPAL, document.getElementById('create-tel').value.trim());

@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-3">
         <div class="field-group">
           <label>Statut Juridique</label>
           <select id="add-statut"><option value="">-- Sélectionner --</option></select>
@@ -71,6 +71,10 @@
         <div class="field-group">
           <label>Type de structure</label>
           <select id="add-type-struct"><option value="">-- Sélectionner --</option></select>
+        </div>
+        <div class="field-group">
+          <label>Domaine d'activité</label>
+          <select id="add-domaine"><option value="">-- Sélectionner --</option></select>
         </div>
       </div>
 
@@ -167,40 +171,28 @@
         remplirCases('group-direction', rows, 'Listes_Diffusion_Direction');
         remplirCases('group-houdremont', rows, 'Listes_Diffusion_Houdremont');
         
-        const colIntervenant = rows.length > 0 && rows[0]['Listes_Diffusion_Intervenants'] !== undefined 
-          ? 'Listes_Diffusion_Intervenants' 
-          : 'Listes_Diffusion_Intervenant';
-        remplirCases('group-intervenant', rows, colIntervenant);
+        const colInt = Object.keys(rows[0] || {}).find(k => k.toLowerCase().includes('intervenant')) || 'Listes_Diffusion_Intervenants';
+        remplirCases('group-intervenant', rows, colInt);
       } catch (err) {
         console.error("Erreur ETIQUETTES :", err);
       }
     }
 
-    function remplirCases(containerId, rows, columnName) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = '';
-      rows.forEach(row => {
-        const val = row[columnName];
-        if (val !== undefined && val !== null && val !== "") {
-          container.innerHTML += `
-            <label class="checkbox-item">
-              <input type="checkbox" value="${row.id}"> ${val}
-            </label>
-          `;
-        }
-      });
-      if (container.innerHTML === '') container.innerHTML = '<span style="color:red; font-size:12px;">Vide/absente</span>';
-    }
-
+    // Charger les listes de diffusion immédiatement au démarrage
     chargerEtiquettes();
 
+    // Remplissage automatique des menus déroulants basé sur les enregistrements existants
     grist.onRecords(function(records) {
       if (records && records.length > 0) {
-        const extraire = (cles) => {
+        const extraire = (keywords) => {
           const set = new Set();
+          const sampleRow = records[0];
+          const matchingKeys = Object.keys(sampleRow).filter(k => 
+            keywords.some(kw => k.toLowerCase().includes(kw.toLowerCase()))
+          );
+
           records.forEach(r => {
-            cles.forEach(k => {
+            matchingKeys.forEach(k => {
               let val = r[k];
               if (val) String(val).split(/[,;]/).forEach(v => { if (v.trim()) set.add(v.trim()); });
             });
@@ -208,17 +200,19 @@
           return Array.from(set).sort();
         };
 
-        const alimenter = (id, opts) => {
+        const alimenter = (id, keywords) => {
           const el = document.getElementById(id);
           if (!el) return;
           const cur = el.value;
+          const opts = extraire(keywords);
           el.innerHTML = '<option value="">-- Sélectionner --</option>' + opts.map(o => `<option value="${o}">${o}</option>`).join('');
           el.value = cur;
         };
 
-        alimenter('add-service', extraire(['Service', 'Service_Origine']));
-        alimenter('add-statut', extraire(['STATUT_JURIDIQUE', 'Statut_Juridique']));
-        alimenter('add-type-struct', extraire(['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE']));
+        alimenter('add-service', ['service']);
+        alimenter('add-statut', ['statut', 'juridique']);
+        alimenter('add-type-struct', ['type_de_structure', 'type_structure']);
+        alimenter('add-domaine', ['domaine', 'activite']);
       }
     });
 
@@ -262,7 +256,6 @@
         return ids.length > 0 ? ['L', ...ids] : null;
       };
 
-      // Noms stricts des colonnes de ta table CONTACTS
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
@@ -271,6 +264,7 @@
         Service: document.getElementById('add-service').value || "",
         STATUT_JURIDIQUE: document.getElementById('add-statut').value || "",
         TYPE_DE_STRUCTURE_CONTACT: document.getElementById('add-type-struct').value || "",
+        Domaine_Activite: document.getElementById('add-domaine').value || "",
         Code_Postal: document.getElementById('add-code-postal').value.trim(),
         Ville: document.getElementById('add-ville').value.trim(),
         EMAIL_PRINCIPAL: document.getElementById('add-email').value.trim(),

@@ -46,8 +46,12 @@
       <span id="form-status" class="status-badge">Prêt</span>
     </div>
 
-    <!-- Ligne 1 : Identité & Structure -->
+    <!-- Ligne 1 : Service, Nom & Prénom -->
     <div class="form-row">
+      <div class="field-group">
+        <label>Service (Origine)</label>
+        <select id="create-service"><option value="">-- Sélectionner --</option></select>
+      </div>
       <div class="field-group">
         <label>Nom *</label>
         <input type="text" id="create-nom" placeholder="Nom de famille...">
@@ -56,17 +60,13 @@
         <label>Prénom</label>
         <input type="text" id="create-prenom" placeholder="Prénom...">
       </div>
-      <div class="field-group">
-        <label>Structure</label>
-        <select id="create-structure"><option value="">-- Sélectionner --</option></select>
-      </div>
     </div>
 
-    <!-- Ligne 2 : Infos Pro / Service -->
+    <!-- Ligne 2 : Structure, Statut & Type de structure -->
     <div class="form-row">
       <div class="field-group">
-        <label>Service (Origine)</label>
-        <select id="create-service"><option value="">-- Sélectionner --</option></select>
+        <label>Structure</label>
+        <input type="text" id="create-structure" placeholder="Nom de la structure...">
       </div>
       <div class="field-group">
         <label>Statut Juridique</label>
@@ -94,11 +94,11 @@
       </div>
     </div>
 
-    <!-- Ligne 4 : Contacts (Email & Téléphone) -->
+    <!-- Ligne 4 : Contacts Principaux (Email, Téléphone & CP) -->
     <div class="form-row">
       <div class="field-group">
         <label>Email Principal</label>
-        <input type="text" id="create-email" placeholder="email@exemple.fr" oninput="verifierEmailInput(this)">
+        <input type="text" id="create-email" placeholder="email@exemple.fr" oninput="verifierEmailInput(this, 'email-msg')">
         <div id="email-msg" class="email-msg"></div>
       </div>
       <div class="field-group">
@@ -108,6 +108,22 @@
       <div class="field-group">
         <label>Code Postal</label>
         <input type="text" id="create-cp" placeholder="Code postal...">
+      </div>
+    </div>
+
+    <!-- Ligne 5 : Contacts Secondaires -->
+    <div class="form-row">
+      <div class="field-group">
+        <label>Email Secondaire</label>
+        <input type="text" id="create-email-sec" placeholder="email.sec@exemple.fr" oninput="verifierEmailInput(this, 'email-sec-msg')">
+        <div id="email-sec-msg" class="email-msg"></div>
+      </div>
+      <div class="field-group">
+        <label>Téléphone Secondaire</label>
+        <input type="text" id="create-tel-sec" placeholder="Téléphone secondaire...">
+      </div>
+      <div class="field-group">
+        <!-- Espace vide pour garder l'alignement des colonnes propre -->
       </div>
     </div>
 
@@ -149,9 +165,9 @@
 
   <script>
     let allRecords = [];
-    let referenceTables = { structures: [], services: [], statuts: [], etiquettes: null };
+    let referenceTables = { services: [], statuts: [], etiquettes: null };
 
-    // Dictionnaire des clés mis à jour
+    // Dictionnaire des clés mis à jour avec les champs secondaires
     const KEYS = {
       NOM: ['NOM', 'Nom'],
       PRENOM: ['PRENOM', 'Prénom', 'Prenom'],
@@ -164,7 +180,9 @@
       CODE_POSTAL: ['Code_Postal', 'Code Postal', 'CP'],
       VILLE: ['Ville', 'VILLE'],
       EMAIL_PRINCIPAL: ['EMAIL_PRINCIPAL', 'Email Principal', 'Email'],
+      EMAIL_SECONDAIRE: ['Email_Secondaire', 'Email Secondaire', 'EMAIL_SECONDAIRE'],
       TEL_PRINCIPAL: ['Telephone_Principal', 'Téléphone Principal', 'Tel_Principal'],
+      TEL_SECONDAIRE: ['Telephone_Secondaire', 'Téléphone Secondaire', 'Tel_Secondaire'],
       DIFF_CINEMA: ['Listes_Diffusion_Cinema', 'Listes Diffusion Cinéma', 'Diffusion Cinéma', 'Diffusion_Cinema'],
       DIFF_DIRECTION: ['Listes_Diffusion_Direction', 'Listes Diffusion Direction', 'Diffusion Direction', 'Diffusion_Direction'],
       DIFF_HOUDREMONT: ['Listes_Diffusion_Houdremont', 'Listes Diffusion Houdremont', 'Diffusion Houdremont', 'Diffusion_Houdremont'],
@@ -186,8 +204,6 @@
         const fetchTable = async (name) => {
           try { return await grist.docApi.fetchTable(name); } catch(e) { return null; }
         };
-        const tStruct = await fetchTable('STRUCTURES') || await fetchTable('Structures');
-        if(tStruct) referenceTables.structures = tStruct.Nom || tStruct.NOM || tStruct.Name || [];
         
         const tServ = await fetchTable('SERVICES') || await fetchTable('Services');
         if(tServ) referenceTables.services = tServ.Nom || tServ.Service || [];
@@ -195,7 +211,7 @@
         const tStat = await fetchTable('STATUTS') || await fetchTable('Statuts');
         if(tStat) referenceTables.statuts = tStat.Nom || tStat.Statut || [];
 
-        // Récupération de la table ETIQUETTES pour les listes dynamiques
+        // Récupération de la table ETIQUETTES
         const tEtiquettes = await fetchTable('ETIQUETTES') || await fetchTable('Etiquettes');
         if(tEtiquettes) referenceTables.etiquettes = tEtiquettes;
 
@@ -232,13 +248,11 @@
         sel.innerHTML = '<option value="">-- Sélectionner --</option>' + options.map(o => `<option value="${o}">${o}</option>`).join('');
       };
 
-      const structuresList = Array.from(new Set([...referenceTables.structures, ...extraireValeursUniques(KEYS.STRUCTURE)]));
       const servicesList = Array.from(new Set([...referenceTables.services, ...extraireValeursUniques(KEYS.SERVICE)]));
       const statutsList = Array.from(new Set([...referenceTables.statuts, ...extraireValeursUniques(KEYS.STATUT)]));
       const typesList = extraireValeursUniques(KEYS.TYPE_STRUCT);
       const domainesList = extraireValeursUniques(KEYS.DOMAINE);
 
-      alimenter('create-structure', structuresList);
       alimenter('create-service', servicesList);
       alimenter('create-statut', statutsList);
       alimenter('create-type-structure', typesList);
@@ -275,9 +289,9 @@
       genererGroupe(KEYS.DIFF_INTERVENANT, 'group-intervenant');
     }
 
-    function verifierEmailInput(input) {
+    function verifierEmailInput(input, msgId) {
       const val = input.value.trim();
-      const msg = document.getElementById('email-msg');
+      const msg = document.getElementById(msgId);
       if (!val) {
         input.className = '';
         msg.textContent = '';
@@ -319,8 +333,8 @@
 
       setFieldIfExists(KEYS.NOM, nom);
       setFieldIfExists(KEYS.PRENOM, prenom);
-      setFieldIfExists(KEYS.STRUCTURE, document.getElementById('create-structure').value);
       setFieldIfExists(KEYS.SERVICE, document.getElementById('create-service').value);
+      setFieldIfExists(KEYS.STRUCTURE, document.getElementById('create-structure').value.trim());
       setFieldIfExists(KEYS.STATUT, document.getElementById('create-statut').value);
       setFieldIfExists(KEYS.TYPE_STRUCT, document.getElementById('create-type-structure').value);
       setFieldIfExists(KEYS.FONCTION, document.getElementById('create-fonction').value.trim());
@@ -328,7 +342,9 @@
       setFieldIfExists(KEYS.VILLE, document.getElementById('create-ville').value.trim());
       setFieldIfExists(KEYS.CODE_POSTAL, document.getElementById('create-cp').value.trim());
       setFieldIfExists(KEYS.EMAIL_PRINCIPAL, document.getElementById('create-email').value.trim());
+      setFieldIfExists(KEYS.EMAIL_SECONDAIRE, document.getElementById('create-email-sec').value.trim());
       setFieldIfExists(KEYS.TEL_PRINCIPAL, document.getElementById('create-tel').value.trim());
+      setFieldIfExists(KEYS.TEL_SECONDAIRE, document.getElementById('create-tel-sec').value.trim());
       setFieldIfExists(KEYS.COMMENTAIRE, document.getElementById('create-commentaire').value.trim());
 
       const getCheckedValues = (selector) => {
@@ -363,8 +379,8 @@
       document.querySelectorAll('select').forEach(s => s.value = '');
       document.querySelectorAll('textarea').forEach(t => t.value = '');
       document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-      document.getElementById('email-msg').textContent = '';
-      document.getElementById('create-nom').focus();
+      document.querySelectorAll('.email-msg').forEach(m => m.textContent = '');
+      document.getElementById('create-service').focus();
     }
   </script>
 </body>

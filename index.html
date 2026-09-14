@@ -103,7 +103,9 @@
         </div>
         <div class="field-group">
           <label>Ville</label>
-          <input type="text" id="add-ville" placeholder="ex. La Courneuve">
+          <select id="add-ville">
+            <option value="">-- Saisir un code postal --</option>
+          </select>
         </div>
       </div>
 
@@ -174,11 +176,13 @@
       columns: [] 
     });
 
+    let communesCache = [];
+
     async function initialiserFormulaire() {
       try {
         const tables = await grist.docApi.listTables();
 
-        // 1. Chargement de la table ETIQUETTES pour les listes et les cases à cocher
+        // 1. Chargement de la table ETIQUETTES
         if (tables.includes('ETIQUETTES')) {
           const rawEtiquettes = await grist.docApi.fetchTable('ETIQUETTES');
           const idsE = rawEtiquettes.id || [];
@@ -194,7 +198,7 @@
           peuplerCasesACocher(etiquettesRows);
         }
 
-        // 2. Recherche et chargement de la table des utilisateurs/services dynamiquement
+        // 2. Chargement de la table des utilisateurs / services
         const tableUtilisateursName = tables.find(t => t.toLowerCase().includes('utilisateur') || t.toLowerCase().includes('service'));
         if (tableUtilisateursName) {
           const rawUsers = await grist.docApi.fetchTable(tableUtilisateursName);
@@ -209,6 +213,19 @@
 
           const serviceOpts = extraireOptionsColonne(userRows, ['Service', 'Nom', 'Libelle', 'Utilisateur', 'Name']);
           peuplerSelectDirect('add-service', serviceOpts);
+        }
+
+        // 3. Chargement de la table COMMUNES_FRANCE_2026 pour l'autocomplétion des villes
+        if (tables.includes('COMMUNES_FRANCE_2026')) {
+          const rawCommunes = await grist.docApi.fetchTable('COMMUNES_FRANCE_2026');
+          const idsC = rawCommunes.id || [];
+          communesCache = idsC.map((id, index) => {
+            return {
+              id,
+              nom_commune: rawCommunes.nom_commune ? rawCommunes.nom_commune[index] : '',
+              code_postal: rawCommunes.code_postal ? String(rawCommunes.code_postal[index]) : ''
+            };
+          });
         }
 
       } catch (err) {
@@ -282,16 +299,31 @@
       mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
     }
 
-    async function chercherVilleParCodePostal(cp) {
+    function chercherVilleParCodePostal(cp) {
       const clean = cp.trim();
-      if (/^\d{5}$/.test(clean)) {
-        try {
-          const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${clean}&type=municipality&limit=1`);
-          const data = await res.json();
-          if (data.features && data.features.length > 0) {
-            document.getElementById('add-ville').value = data.features[0].properties.city;
-          }
-        } catch (e) { console.error(e); }
+      const villeSelect = document.getElementById('add-ville');
+      if (!villeSelect) return;
+
+      if (clean.length < 5) {
+        villeSelect.innerHTML = '<option value="">-- Saisir un code postal --</option>';
+        return;
+      }
+
+      const matching = communesCache.filter(c => {
+        const codes = c.code_postal.split(',').map(s => s.trim());
+        return codes.includes(clean);
+      });
+
+      if (matching.length === 0) {
+        villeSelect.innerHTML = '<option value="">-- Aucune ville trouvée --</option>';
+      } else if (matching.length === 1) {
+        villeSelect.innerHTML = `<option value="${matching[0].nom_commune}" selected>${matching[0].nom_commune}</option>`;
+      } else {
+        let html = '<option value="">-- Sélectionner une ville --</option>';
+        matching.sort((a, b) => a.nom_commune.localeCompare(b.nom_commune)).forEach(m => {
+          html += `<option value="${m.nom_commune}">${m.nom_commune}</option>`;
+        });
+        villeSelect.innerHTML = html;
       }
     }
 
@@ -372,6 +404,7 @@
 
         alert('Nouveau contact enregistré avec succès !');
         document.getElementById('contact-form').reset();
+        document.getElementById('add-ville').innerHTML = '<option value="">-- Saisir un code postal --</option>';
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
       } catch (err) {

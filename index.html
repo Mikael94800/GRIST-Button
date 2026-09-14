@@ -174,24 +174,49 @@
       columns: [] 
     });
 
-    // Chargement de la table ETIQUETTES pour alimenter les selects et les cases à cocher liés aux identifiants (ID)
-    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
-      const ids = rawTable.id || [];
-      const etiquettesRows = ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
-          }
-        }
-        return row;
-      });
+    async function initialiserFormulaire() {
+      try {
+        const tables = await grist.docApi.listTables();
 
-      peuplerSelectsDepuisEtiquettes(etiquettesRows);
-      peuplerCasesACocher(etiquettesRows);
-    }).catch(err => {
-      console.error("Impossible de charger la table ETIQUETTES :", err);
-    });
+        // 1. Chargement de la table ETIQUETTES pour les listes et les cases à cocher
+        if (tables.includes('ETIQUETTES')) {
+          const rawEtiquettes = await grist.docApi.fetchTable('ETIQUETTES');
+          const idsE = rawEtiquettes.id || [];
+          const etiquettesRows = idsE.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawEtiquettes)) {
+              if (key !== 'id') row[key] = rawEtiquettes[key][index];
+            }
+            return row;
+          });
+
+          peuplerSelectsDepuisEtiquettes(etiquettesRows);
+          peuplerCasesACocher(etiquettesRows);
+        }
+
+        // 2. Recherche et chargement de la table des utilisateurs/services dynamiquement
+        const tableUtilisateursName = tables.find(t => t.toLowerCase().includes('utilisateur') || t.toLowerCase().includes('service'));
+        if (tableUtilisateursName) {
+          const rawUsers = await grist.docApi.fetchTable(tableUtilisateursName);
+          const idsU = rawUsers.id || [];
+          const userRows = idsU.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawUsers)) {
+              if (key !== 'id') row[key] = rawUsers[key][index];
+            }
+            return row;
+          });
+
+          const serviceOpts = extraireOptionsColonne(userRows, ['Service', 'Nom', 'Libelle', 'Utilisateur', 'Name']);
+          peuplerSelectDirect('add-service', serviceOpts);
+        }
+
+      } catch (err) {
+        console.error("Erreur lors de l'initialisation :", err);
+      }
+    }
+
+    initialiserFormulaire();
 
     function extraireOptionsColonne(rows, possibleKeys) {
       const map = new Map();
@@ -220,9 +245,6 @@
     }
 
     function peuplerSelectsDepuisEtiquettes(rows) {
-      const serviceOpts = extraireOptionsColonne(rows, ['Service', 'Service_Origine', 'SERVICE']);
-      peuplerSelectDirect('add-service', serviceOpts);
-
       const statutOpts = extraireOptionsColonne(rows, ['STATUT_JURIDIQUE', 'Statut_Juridique', 'Statut']);
       peuplerSelectDirect('add-statut', statutOpts);
 
@@ -285,10 +307,10 @@
         return true;
       }
 
-      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$([,;]\s*[^\s@]+@[^\s@]+\.[^\s@]+)*$/;
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       let valide = multiple 
-        ? val.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) 
-        : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+        ? val.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => regexEmail.test(e)) 
+        : regexEmail.test(val);
 
       if (valide) {
         input.className = 'valid-email';

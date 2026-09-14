@@ -215,7 +215,7 @@
           peuplerSelectDirect('add-service', serviceOpts);
         }
 
-        // 3. Chargement de la table COMMUNES_FRANCE_2026 pour l'autocomplétion des villes
+        // 3. Chargement de la table COMMUNES_FRANCE_2026
         if (tables.includes('COMMUNES_FRANCE_2026')) {
           const rawCommunes = await grist.docApi.fetchTable('COMMUNES_FRANCE_2026');
           const idsC = rawCommunes.id || [];
@@ -226,6 +226,12 @@
               code_postal: rawCommunes.code_postal ? String(rawCommunes.code_postal[index]) : ''
             };
           });
+
+          // Si un code postal a déjà été saisi pendant le chargement, on déclenche la recherche immédiatement
+          const cpInput = document.getElementById('add-code-postal');
+          if (cpInput && cpInput.value.trim()) {
+            chercherVilleParCodePostal(cpInput.value);
+          }
         }
 
       } catch (err) {

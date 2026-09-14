@@ -76,7 +76,7 @@
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-3">
         <div class="field-group">
           <label>Statut Juridique</label>
           <select id="add-statut"><option value="">-- Sélectionner --</option></select>
@@ -84,6 +84,10 @@
         <div class="field-group">
           <label>Type de structure</label>
           <select id="add-type-struct"><option value="">-- Sélectionner --</option></select>
+        </div>
+        <div class="field-group">
+          <label>Domaine d'activités</label>
+          <select id="add-domaine"><option value="">-- Sélectionner --</option></select>
         </div>
       </div>
 
@@ -170,75 +174,63 @@
       columns: [] 
     });
 
-    // Chargement initial des tables de référence et des étiquettes
-    async function initialiserDonnees() {
-      try {
-        const tables = await grist.docApi.listTables();
-
-        async function chargerOptionsTable(keywords, possibleColumns) {
-          const tableName = tables.find(t => keywords.some(kw => t.toLowerCase().includes(kw)));
-          if (!tableName) return [];
-          
-          const rawTable = await grist.docApi.fetchTable(tableName);
-          const ids = rawTable.id || [];
-          const rows = ids.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawTable)) {
-              if (key !== 'id') row[key] = rawTable[key][index];
-            }
-            return row;
-          });
-
-          const sample = rows[0] || {};
-          const textCol = possibleColumns.find(col => sample[col] !== undefined) || 
-                          Object.keys(sample).find(k => k !== 'id' && typeof sample[k] === 'string');
-          
-          if (!textCol) return [];
-
-          return rows
-            .map(r => ({ id: r.id, label: String(r[textCol] || '').trim() }))
-            .filter(r => r.label)
-            .sort((a, b) => a.label.localeCompare(b.label));
+    // Chargement de la table ETIQUETTES pour alimenter les selects et les cases à cocher liés aux identifiants (ID)
+    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
+      const ids = rawTable.id || [];
+      const etiquettesRows = ids.map((id, index) => {
+        const row = { id };
+        for (const key of Object.keys(rawTable)) {
+          if (key !== 'id') {
+            row[key] = rawTable[key][index];
+          }
         }
+        return row;
+      });
 
-        // Remplissage dynamique des listes déroulantes avec les ID cibles
-        const servicesOptions = await chargerOptionsTable(['service'], ['Service', 'Nom', 'Libelle', 'Titre']);
-        remplirSelectDirect('add-service', servicesOptions);
+      peuplerSelectsDepuisEtiquettes(etiquettesRows);
+      peuplerCasesACocher(etiquettesRows);
+    }).catch(err => {
+      console.error("Impossible de charger la table ETIQUETTES :", err);
+    });
 
-        const statutOptions = await chargerOptionsTable(['statut'], ['STATUT_JURIDIQUE', 'Statut', 'Nom', 'Libelle']);
-        remplirSelectDirect('add-statut', statutOptions);
-
-        const typeStructOptions = await chargerOptionsTable(['type', 'structure'], ['TYPE_DE_STRUCTURE', 'Type', 'Nom', 'Libelle']);
-        remplirSelectDirect('add-type-struct', typeStructOptions);
-
-        // Chargement de la table ETIQUETTES
-        if (tables.includes('ETIQUETTES')) {
-          const rawEtiquettes = await grist.docApi.fetchTable('ETIQUETTES');
-          const idsE = rawEtiquettes.id || [];
-          const etiquettesRows = idsE.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawEtiquettes)) {
-              if (key !== 'id') row[key] = rawEtiquettes[key][index];
+    function extraireOptionsColonne(rows, possibleKeys) {
+      const map = new Map();
+      rows.forEach(row => {
+        for (const pk of possibleKeys) {
+          if (row[pk] !== undefined && row[pk] !== null && row[pk] !== '') {
+            const val = String(row[pk]).trim();
+            if (val && !map.has(val)) {
+              map.set(val, row.id);
             }
-            return row;
-          });
-          peuplerCasesACocher(etiquettesRows);
+          }
         }
-
-      } catch (err) {
-        console.error("Erreur lors de l'initialisation des données :", err);
-      }
+      });
+      return Array.from(map.entries())
+        .map(([label, id]) => ({ label, id }))
+        .sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    initialiserDonnees();
-
-    function remplirSelectDirect(elementId, optionsObjets) {
+    function peuplerSelectDirect(elementId, optionsObjets) {
       const el = document.getElementById(elementId);
-      if (!el || optionsObjets.length === 0) return;
+      if (!el) return;
       const cur = el.value;
       el.innerHTML = '<option value="">-- Sélectionner --</option>' + 
         optionsObjets.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
       el.value = cur;
+    }
+
+    function peuplerSelectsDepuisEtiquettes(rows) {
+      const serviceOpts = extraireOptionsColonne(rows, ['Service', 'Service_Origine', 'SERVICE']);
+      peuplerSelectDirect('add-service', serviceOpts);
+
+      const statutOpts = extraireOptionsColonne(rows, ['STATUT_JURIDIQUE', 'Statut_Juridique', 'Statut']);
+      peuplerSelectDirect('add-statut', statutOpts);
+
+      const typeStructOpts = extraireOptionsColonne(rows, ['TYPE_DE_STRUCTURE / CONTACT', 'TYPE_DE_STRUCTURE_CONTACT', 'Type_De_Structure', 'Type']);
+      peuplerSelectDirect('add-type-struct', typeStructOpts);
+
+      const domaineOpts = extraireOptionsColonne(rows, ["DOMAINE D'ACTIVITES", 'DOMAINE_D_ACTIVITES', 'Domaine_Activites', 'Domaine']);
+      peuplerSelectDirect('add-domaine', domaineOpts);
     }
 
     function peuplerCasesACocher(etiquettes) {
@@ -293,10 +285,10 @@
         return true;
       }
 
-      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$([,;]\s*[^\s@]+@[^\s@]+\.[^\s@]+)*$/;
       let valide = multiple 
-        ? val.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => regexEmail.test(e)) 
-        : regexEmail.test(val);
+        ? val.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) 
+        : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
 
       if (valide) {
         input.className = 'valid-email';
@@ -310,24 +302,25 @@
       return true;
     }
 
+    function valToNum(val) {
+      return val ? Number(val) : "";
+    }
+
     async function enregistrerContact(event) {
       event.preventDefault();
       const debugBox = document.getElementById('debug-box');
       debugBox.style.display = 'none';
       debugBox.innerText = '';
 
-      const serviceVal = document.getElementById('add-service').value;
-      const statutVal = document.getElementById('add-statut').value;
-      const typeStructVal = document.getElementById('add-type-struct').value;
-
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
         PRENOM: document.getElementById('add-prenom').value.trim(),
         NOM_Structure: document.getElementById('add-structure').value.trim(),
         Fonction_Profession: document.getElementById('add-fonction').value.trim(),
-        Service: serviceVal ? Number(serviceVal) : "",
-        STATUT_JURIDIQUE: statutVal ? Number(statutVal) : "",
-        TYPE_DE_STRUCTURE_CONTACT: typeStructVal ? Number(typeStructVal) : "",
+        Service: valToNum(document.getElementById('add-service').value),
+        STATUT_JURIDIQUE: valToNum(document.getElementById('add-statut').value),
+        TYPE_DE_STRUCTURE_CONTACT: valToNum(document.getElementById('add-type-struct').value),
+        DOMAINE_D_ACTIVITES: valToNum(document.getElementById('add-domaine').value),
         Adresse: document.getElementById('add-adresse').value.trim(),
         Code_Postal: document.getElementById('add-code-postal').value.trim(),
         Ville: document.getElementById('add-ville').value.trim(),

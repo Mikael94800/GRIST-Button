@@ -170,28 +170,76 @@
       columns: [] 
     });
 
-    grist.onRecords(function(records) {
-      if (records && records.length > 0) {
-        remplirSelects(records);
-      }
-    });
+    // Chargement initial des tables de référence et des étiquettes
+    async function initialiserDonnees() {
+      try {
+        const tables = await grist.docApi.listTables();
 
-    // Chargement de la table ETIQUETTES convertie en tableau de lignes
-    grist.docApi.fetchTable('ETIQUETTES').then(rawTable => {
-      const ids = rawTable.id || [];
-      const etiquettesRows = ids.map((id, index) => {
-        const row = { id };
-        for (const key of Object.keys(rawTable)) {
-          if (key !== 'id') {
-            row[key] = rawTable[key][index];
-          }
+        async function chargerOptionsTable(keywords, possibleColumns) {
+          const tableName = tables.find(t => keywords.some(kw => t.toLowerCase().includes(kw)));
+          if (!tableName) return [];
+          
+          const rawTable = await grist.docApi.fetchTable(tableName);
+          const ids = rawTable.id || [];
+          const rows = ids.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawTable)) {
+              if (key !== 'id') row[key] = rawTable[key][index];
+            }
+            return row;
+          });
+
+          const sample = rows[0] || {};
+          const textCol = possibleColumns.find(col => sample[col] !== undefined) || 
+                          Object.keys(sample).find(k => k !== 'id' && typeof sample[k] === 'string');
+          
+          if (!textCol) return [];
+
+          return rows
+            .map(r => ({ id: r.id, label: String(r[textCol] || '').trim() }))
+            .filter(r => r.label)
+            .sort((a, b) => a.label.localeCompare(b.label));
         }
-        return row;
-      });
-      peuplerCasesACocher(etiquettesRows);
-    }).catch(err => {
-      console.error("Impossible de charger la table ETIQUETTES :", err);
-    });
+
+        // Remplissage dynamique des listes déroulantes avec les ID cibles
+        const servicesOptions = await chargerOptionsTable(['service'], ['Service', 'Nom', 'Libelle', 'Titre']);
+        remplirSelectDirect('add-service', servicesOptions);
+
+        const statutOptions = await chargerOptionsTable(['statut'], ['STATUT_JURIDIQUE', 'Statut', 'Nom', 'Libelle']);
+        remplirSelectDirect('add-statut', statutOptions);
+
+        const typeStructOptions = await chargerOptionsTable(['type', 'structure'], ['TYPE_DE_STRUCTURE', 'Type', 'Nom', 'Libelle']);
+        remplirSelectDirect('add-type-struct', typeStructOptions);
+
+        // Chargement de la table ETIQUETTES
+        if (tables.includes('ETIQUETTES')) {
+          const rawEtiquettes = await grist.docApi.fetchTable('ETIQUETTES');
+          const idsE = rawEtiquettes.id || [];
+          const etiquettesRows = idsE.map((id, index) => {
+            const row = { id };
+            for (const key of Object.keys(rawEtiquettes)) {
+              if (key !== 'id') row[key] = rawEtiquettes[key][index];
+            }
+            return row;
+          });
+          peuplerCasesACocher(etiquettesRows);
+        }
+
+      } catch (err) {
+        console.error("Erreur lors de l'initialisation des données :", err);
+      }
+    }
+
+    initialiserDonnees();
+
+    function remplirSelectDirect(elementId, optionsObjets) {
+      const el = document.getElementById(elementId);
+      if (!el || optionsObjets.length === 0) return;
+      const cur = el.value;
+      el.innerHTML = '<option value="">-- Sélectionner --</option>' + 
+        optionsObjets.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+      el.value = cur;
+    }
 
     function peuplerCasesACocher(etiquettes) {
       const mapper = (containerId, columnName) => {
@@ -218,51 +266,6 @@
       mapper('group-add-direction', 'Listes_Diffusion_Direction');
       mapper('group-add-houdremont', 'Listes_Diffusion_Houdremont');
       mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
-    }
-
-    function extraireObjetsUniques(records, cles) {
-      const map = new Map();
-      records.forEach(r => {
-        cles.forEach(k => {
-          if (r[k] !== undefined && r[k] !== null) {
-            let id = '';
-            let label = '';
-            if (Array.isArray(r[k])) {
-              id = r[k][0];
-              label = String(r[k][1] || r[k][0]).trim();
-            } else {
-              label = String(r[k]).trim();
-              id = label;
-            }
-            if (label && label !== 'undefined') {
-              label.split(/[,;]/).forEach(subLabel => {
-                const cleanLabel = subLabel.trim();
-                if (cleanLabel && !map.has(cleanLabel)) {
-                  map.set(cleanLabel, id);
-                }
-              });
-            }
-          }
-        });
-      });
-      return Array.from(map.entries())
-        .map(([label, id]) => ({ label, id }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-
-    function remplirSelects(records) {
-      const alimenter = (id, optionsObjets) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const cur = el.value;
-        el.innerHTML = '<option value="">-- Sélectionner --</option>' + 
-          optionsObjets.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
-        el.value = cur;
-      };
-
-      alimenter('add-service', extraireObjetsUniques(records, ['Service', 'Service_Origine']));
-      alimenter('add-statut', extraireObjetsUniques(records, ['STATUT_JURIDIQUE', 'Statut_Juridique']));
-      alimenter('add-type-struct', extraireObjetsUniques(records, ['TYPE_DE_STRUCTURE_CONTACT', 'TYPE_DE_STRUCTURE']));
     }
 
     async function chercherVilleParCodePostal(cp) {
@@ -322,9 +325,9 @@
         PRENOM: document.getElementById('add-prenom').value.trim(),
         NOM_Structure: document.getElementById('add-structure').value.trim(),
         Fonction_Profession: document.getElementById('add-fonction').value.trim(),
-        Service: serviceVal ? (isNaN(serviceVal) ? serviceVal : Number(serviceVal)) : "",
-        STATUT_JURIDIQUE: statutVal ? (isNaN(statutVal) ? statutVal : Number(statutVal)) : "",
-        TYPE_DE_STRUCTURE_CONTACT: typeStructVal ? (isNaN(typeStructVal) ? typeStructVal : Number(typeStructVal)) : "",
+        Service: serviceVal ? Number(serviceVal) : "",
+        STATUT_JURIDIQUE: statutVal ? Number(statutVal) : "",
+        TYPE_DE_STRUCTURE_CONTACT: typeStructVal ? Number(typeStructVal) : "",
         Adresse: document.getElementById('add-adresse').value.trim(),
         Code_Postal: document.getElementById('add-code-postal').value.trim(),
         Ville: document.getElementById('add-ville').value.trim(),

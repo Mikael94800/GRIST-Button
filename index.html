@@ -38,6 +38,7 @@
     .actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
     .btn-submit { background-color: #15803d; color: white; border: none; padding: 14px 28px; font-size: 17px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background-color 0.2s; }
     .btn-submit:hover { background-color: #166534; }
+    .btn-submit:disabled { opacity: 0.65; cursor: wait; }
 
     #debug-box { margin-top: 20px; padding: 12px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap; display: none; }
   </style>
@@ -177,6 +178,7 @@
     });
 
     let communesCache = [];
+    let enregistrementEnCours = false;
 
     async function initialiserFormulaire() {
       try {
@@ -262,9 +264,22 @@
       const el = document.getElementById(elementId);
       if (!el) return;
       const cur = el.value;
-      el.innerHTML = '<option value="">-- Sélectionner --</option>' + 
-        optionsObjets.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
-      el.value = cur;
+
+      // Construction DOM explicite : aucune donnée provenant de Grist
+      // n'est interprétée comme du HTML.
+      el.replaceChildren();
+      el.appendChild(new Option('-- Sélectionner --', ''));
+
+      optionsObjets.forEach(o => {
+        const option = new Option(String(o.label), String(o.id));
+        el.appendChild(option);
+      });
+
+      if (Array.from(el.options).some(option => option.value === cur)) {
+        el.value = cur;
+      } else {
+        el.value = '';
+      }
     }
 
     function peuplerSelectsDepuisEtiquettes(rows) {
@@ -282,20 +297,28 @@
       const mapper = (containerId, columnName) => {
         const container = document.getElementById(containerId);
         if (!container) return;
-        
-        const checkedIds = Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value));
-        container.innerHTML = '';
-        
+
+        const checkedIds = new Set(
+          Array.from(container.querySelectorAll('input:checked')).map(cb => Number(cb.value))
+        );
+        container.replaceChildren();
+
         etiquettes.forEach(row => {
           const val = row[columnName];
-          if (val) {
-            const isChecked = checkedIds.includes(row.id) ? 'checked' : '';
-            container.innerHTML += `
-              <label class="checkbox-item">
-                <input type="checkbox" value="${row.id}" ${isChecked}> ${val}
-              </label>
-            `;
-          }
+          if (val === undefined || val === null || String(val).trim() === '') return;
+
+          const label = document.createElement('label');
+          label.className = 'checkbox-item';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = String(row.id);
+          checkbox.checked = checkedIds.has(Number(row.id));
+
+          // Le libellé Grist est injecté uniquement comme texte.
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(' ' + String(val)));
+          container.appendChild(label);
         });
       };
 
@@ -305,13 +328,23 @@
       mapper('group-add-intervenant', 'Listes_Diffusion_Intervenants');
     }
 
+    function definirOptionsVille(villeSelect, options, texteVide) {
+      villeSelect.replaceChildren();
+      villeSelect.appendChild(new Option(texteVide, ''));
+
+      options.forEach(nomVille => {
+        const option = new Option(String(nomVille), String(nomVille));
+        villeSelect.appendChild(option);
+      });
+    }
+
     function chercherVilleParCodePostal(cp) {
       const clean = cp.trim();
       const villeSelect = document.getElementById('add-ville');
       if (!villeSelect) return;
 
       if (clean.length < 5) {
-        villeSelect.innerHTML = '<option value="">-- Saisir un code postal --</option>';
+        definirOptionsVille(villeSelect, [], '-- Saisir un code postal --');
         return;
       }
 
@@ -321,15 +354,17 @@
       });
 
       if (matching.length === 0) {
-        villeSelect.innerHTML = '<option value="">-- Aucune ville trouvée --</option>';
+        definirOptionsVille(villeSelect, [], '-- Aucune ville trouvée --');
       } else if (matching.length === 1) {
-        villeSelect.innerHTML = `<option value="${matching[0].nom_commune}" selected>${matching[0].nom_commune}</option>`;
+        definirOptionsVille(villeSelect, [matching[0].nom_commune], '-- Sélectionner une ville --');
+        villeSelect.value = String(matching[0].nom_commune);
       } else {
-        let html = '<option value="">-- Sélectionner une ville --</option>';
-        matching.sort((a, b) => a.nom_commune.localeCompare(b.nom_commune)).forEach(m => {
-          html += `<option value="${m.nom_commune}">${m.nom_commune}</option>`;
-        });
-        villeSelect.innerHTML = html;
+        matching.sort((a, b) => a.nom_commune.localeCompare(b.nom_commune));
+        definirOptionsVille(
+          villeSelect,
+          matching.map(m => m.nom_commune),
+          '-- Sélectionner une ville --'
+        );
       }
     }
 
@@ -366,11 +401,62 @@
       return val ? Number(val) : "";
     }
 
+    function afficherErreurValidation(message) {
+      const debugBox = document.getElementById('debug-box');
+      if (!debugBox) return;
+      debugBox.style.display = 'block';
+      debugBox.innerText = '⚠️ ' + message;
+      debugBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function validerDonneesAvantEnregistrement() {
+      const nom = document.getElementById('add-nom').value.trim();
+      if (!nom) {
+        afficherErreurValidation('Le nom du contact est obligatoire.');
+        document.getElementById('add-nom').focus();
+        return false;
+      }
+
+      const emailPrincipalValide = validerEmail('add-email-principal', 'msg-email-principal', false);
+      const emailsSecondairesValides = validerEmail('add-emails-secondaires', 'msg-emails-secondaires', true);
+
+      const emailPrincipal = document.getElementById('add-email-principal').value.trim();
+      const emailsSecondaires = document.getElementById('add-emails-secondaires').value.trim();
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const principalOK = !emailPrincipal || regexEmail.test(emailPrincipal);
+      const secondairesOK = !emailsSecondaires || emailsSecondaires.split(/[,;]/).map(e => e.trim()).filter(Boolean).every(e => regexEmail.test(e));
+
+      if (!emailPrincipalValide || !emailsSecondairesValides || !principalOK || !secondairesOK) {
+        afficherErreurValidation('Veuillez corriger les adresses e-mail avant l’enregistrement.');
+        return false;
+      }
+
+      const cp = document.getElementById('add-code-postal').value.trim();
+      if (cp && !/^\d{5}$/.test(cp)) {
+        afficherErreurValidation('Le code postal doit comporter 5 chiffres, ou être laissé vide.');
+        document.getElementById('add-code-postal').focus();
+        return false;
+      }
+
+      return true;
+    }
+
     async function enregistrerContact(event) {
       event.preventDefault();
       const debugBox = document.getElementById('debug-box');
       debugBox.style.display = 'none';
       debugBox.innerText = '';
+
+      if (enregistrementEnCours) return;
+      if (!validerDonneesAvantEnregistrement()) return;
+
+      enregistrementEnCours = true;
+      const submitButton = document.querySelector('.btn-submit');
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.dataset.libelleOriginal = submitButton.textContent;
+        submitButton.textContent = '⏳ Enregistrement en cours…';
+      }
 
       const recordData = {
         NOM: document.getElementById('add-nom').value.trim(),
@@ -410,13 +496,19 @@
 
         alert('Nouveau contact enregistré avec succès !');
         document.getElementById('contact-form').reset();
-        document.getElementById('add-ville').innerHTML = '<option value="">-- Saisir un code postal --</option>';
+        definirOptionsVille(document.getElementById('add-ville'), [], '-- Saisir un code postal --');
         document.querySelectorAll('.email-msg').forEach(el => el.innerText = '');
         document.querySelectorAll('input').forEach(el => el.className = '');
       } catch (err) {
         console.error("Erreur Grist :", err);
         debugBox.style.display = 'block';
         debugBox.innerText = "❌ ERREUR GRIST :\n" + (err.message || JSON.stringify(err, null, 2));
+      } finally {
+        enregistrementEnCours = false;
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = submitButton.dataset.libelleOriginal || '✔ Valider et enregistrer la fiche';
+        }
       }
     }
   </script>

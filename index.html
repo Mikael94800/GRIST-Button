@@ -468,7 +468,14 @@
         PRENOM: document.getElementById('add-prenom').value.trim(),
         NOM_Structure: document.getElementById('add-structure').value.trim(),
         Fonction_Profession: document.getElementById('add-fonction').value.trim(),
-        Service: valToNum(document.getElementById('add-service').value),
+        // SERVICE est une colonne « Choix unique » dans CONTACTS.
+        // Le menu utilise l'ID ETIQUETTES comme valeur interne pour retrouver
+        // la bonne ligne, mais CONTACTS.Service doit recevoir le libellé du choix.
+        Service: (() => {
+          const serviceSelect = document.getElementById('add-service');
+          const option = serviceSelect.options[serviceSelect.selectedIndex];
+          return option && option.value ? option.textContent.trim() : '';
+        })(),
         STATUT_JURIDIQUE: valToNum(document.getElementById('add-statut').value),
         TYPE_DE_STRUCTURE_CONTACT: valToNum(document.getElementById('add-type-struct').value),
         DOMAINE_D_ACTIVITES: valToNum(document.getElementById('add-domaine').value),

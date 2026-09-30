@@ -200,20 +200,17 @@
           peuplerCasesACocher(etiquettesRows);
         }
 
-        // 2. Chargement de la table des utilisateurs / services
-        const tableUtilisateursName = tables.find(t => t.toLowerCase().includes('utilisateur') || t.toLowerCase().includes('service'));
-        if (tableUtilisateursName) {
-          const rawUsers = await grist.docApi.fetchTable(tableUtilisateursName);
-          const idsU = rawUsers.id || [];
-          const userRows = idsU.map((id, index) => {
-            const row = { id };
-            for (const key of Object.keys(rawUsers)) {
-              if (key !== 'id') row[key] = rawUsers[key][index];
-            }
-            return row;
-          });
-
-          const serviceOpts = extraireOptionsColonne(userRows, ['Service', 'Nom', 'Libelle', 'Utilisateur', 'Name']);
+        // 2. Le champ Service (Origine) est une référence vers ETIQUETTES.
+        //    On utilise donc directement le texte de la colonne SERVICE de ETIQUETTES
+        //    comme libellé et l'id de la ligne ETIQUETTES comme valeur enregistrée.
+        if (etiquettesRows.length > 0) {
+          const serviceOpts = extraireOptionsColonne(etiquettesRows, [
+            'SERVICE',
+            'Service',
+            'Service_Origine',
+            'ORIGINE_CONTACT',
+            'Origine_Contact'
+          ]);
           peuplerSelectDirect('add-service', serviceOpts);
         }
 

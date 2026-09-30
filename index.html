@@ -184,11 +184,15 @@
       try {
         const tables = await grist.docApi.listTables();
 
+        // Tableau conservé hors du bloc if : le service est également
+        // construit à partir des lignes ETIQUETTES.
+        let etiquettesRows = [];
+
         // 1. Chargement de la table ETIQUETTES
         if (tables.includes('ETIQUETTES')) {
           const rawEtiquettes = await grist.docApi.fetchTable('ETIQUETTES');
           const idsE = rawEtiquettes.id || [];
-          const etiquettesRows = idsE.map((id, index) => {
+          etiquettesRows = idsE.map((id, index) => {
             const row = { id };
             for (const key of Object.keys(rawEtiquettes)) {
               if (key !== 'id') row[key] = rawEtiquettes[key][index];
@@ -212,6 +216,10 @@
             'Origine_Contact'
           ]);
           peuplerSelectDirect('add-service', serviceOpts);
+        } else {
+          // Pas de table ETIQUETTES : on laisse le menu vide plutôt que
+          // d'utiliser une autre table ou des valeurs codées en dur.
+          console.warn('Table ETIQUETTES absente ou vide : le menu Service ne peut pas être chargé.');
         }
 
         // 3. Chargement de la table COMMUNES_FRANCE_2026
